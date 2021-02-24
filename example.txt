@@ -1,0 +1,5 @@
+Hello World!
+My name is Joel, and I will be managing our project's Git repo.
+
+abcdefgh
+ijklmnop
