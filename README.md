@@ -32,8 +32,8 @@ EZ Door Lock is controlled by the ESP32-WROOM-32 Wi-Fi module. It consists of th
 *Authored by Joel Taina*
 
 The system is composed of the following hardware:
-* SD card (HSPI)
-* R503 fingerprint module (UART2)
+* SD card
+* R503 fingerprint module
 
 ESP32 development boards need to be connected to the SD card as follows:
 
