@@ -48,8 +48,8 @@ ESP32 development boards need to be connected to the R503 module as follows:
 
 ESP32 pin        | R503 pin | Notes
 -----------------|----------|------------
-GPIO17 (U2TXD)   | TXD      | Data output. TTL logical level
-GPIO16 (U2RXD)   | RXD      | Data input. TTL logical level
+GPIO16 (U2RXD)   | TXD      | Data output. TTL logical level
+GPIO17 (U2TXD)   | RXD      | Data input. TTL logical level
 GPIO4            | WAKEUP   | Finger Detection Signal
 
 **Note about GPIO2**
