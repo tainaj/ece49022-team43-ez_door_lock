@@ -50,7 +50,7 @@ ESP32 pin        | R503 pin | Notes
 -----------------|----------|------------
 GPIO16 (U2RXD)   | TXD      | Data output. TTL logical level
 GPIO17 (U2TXD)   | RXD      | Data input. TTL logical level
-GPIO4            | WAKEUP   | Finger Detection Signal
+GPIO4            | WAKEUP   | Finger Detection Signal. 1nF debouncing capacitor to GND
 
 **Note about GPIO2**
 
