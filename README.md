@@ -67,7 +67,37 @@ The system is composed of the following hardware:
 * Power relay module
 * Solenoid lock ()
 
-ESP32 development boards need to be connected to the OLED display as follows:
+
+ESP32 development boards need to be connected to the 4x4 Keypad as follows:
+
+ESP32 PIN  |   pin   | Notes
+-----------|---------|------------
+GPIO25     |   COL1  | Output
+GPIO26     |   COL2  | Output
+GPIO27     |   COL3  | Output
+GPIO33     |   COL4  | Output
+GPIO34     |   ROW1  | Input
+GPIO35     |   ROW2  | Input
+GPIO36     |   ROW3  | Input
+GPIO39     |   ROW4  | Input
+
+
+ESP32 development boards need to be connected to the Relay and Push Button as follows:
+
+ESP32 PIN |      pin      | Notes
+----------|---------------|--------
+GPIO19    |  Push Button  | Output
+GPIO21    |     Relay     | Output
+
+
+ESP32 development boards need to be connected to the 16x2 LCD Display as follows:
+
+ESP32 PIN  | LCD pin | Notes
+-----------|---------|--------
+GPIO18     |   SDK   |
+GPIO23     |   MOSI  |
+GPIO5      |    CS   |
+
 
 ### Wireless Communication (requires editing)
 *Authored by Benjamin Oh*
