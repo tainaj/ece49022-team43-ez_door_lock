@@ -58,14 +58,15 @@ GPIO2 pin is used as a bootstrapping pin, and should be low to enter UART downlo
 
 - Some boards have pulldown and/or LED on GPIO2. LED is usually ok, but pulldown will interfere with D0 signals and must be removed. Check the schematic of your development board for anything connected to GPIO2.
 
-### User Interface and Integration of Things (requires editing)
+### User Interface and Integration of Things
 *Authored by Sung-Woo Jang*
 
 The system is composed of the following hardware:
-* CFAL1602 OLED display (?)
+* CFAL1602 OLED display
 * 4x4 keypad
-* Power relay module
-* Solenoid lock ()
+* Power Relay module
+* Solenoid lock
+* Push Button
 
 
 ESP32 development boards need to be connected to the 4x4 Keypad as follows:
@@ -86,17 +87,19 @@ ESP32 development boards need to be connected to the Relay and Push Button as fo
 
 ESP32 PIN |      pin      | Notes
 ----------|---------------|--------
-GPIO19    |  Push Button  | Output
+GPIO19    |  Push Button  | Input
 GPIO21    |     Relay     | Output
 
 
-ESP32 development boards need to be connected to the 16x2 LCD Display as follows:
+ESP32 development boards need to be connected to the CFAL1602 OLED Display as follows:
 
 ESP32 PIN  | LCD pin | Notes
 -----------|---------|--------
 GPIO18     |   SDK   |
 GPIO23     |   MOSI  |
 GPIO5      |    CS   |
+
+*Joel will help with!*
 
 
 ### Wireless Communication (requires editing)
