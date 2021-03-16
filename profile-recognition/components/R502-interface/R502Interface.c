@@ -3,6 +3,13 @@
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
+uint8_t data_cb_buffer[R502_MAX_DATA_LEN];
+
+static void IRAM_ATTR gpio_isr_handler(void* arg)
+{
+    uint32_t gpio_num = (uint32_t) arg;
+    xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+}
 
 esp_err_t R502_init(R502Interface *this, uart_port_t _uart_num, gpio_num_t _pin_txd, 
     gpio_num_t _pin_rxd, gpio_num_t _pin_irq, 
@@ -38,7 +45,26 @@ esp_err_t R502_init(R502Interface *this, uart_port_t _uart_num, gpio_num_t _pin_
         MAX(sizeof(R502_DataPkg_t), this->min_uart_buffer_size), 0, 0, NULL, 0);
     if(err) return err;
 
-    err = gpio_set_direction(this->pin_irq, GPIO_MODE_INPUT);
+    /* Configure parameters of a pin_isr interrupt,
+     * communication pins and install the driver */
+    gpio_config_t io_conf;
+    io_conf.intr_type = GPIO_PIN_INTR_NEGEDGE;
+    io_conf.pin_bit_mask = 1ULL<<(this->pin_irq);
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = 0;
+    err = gpio_config(&io_conf);
+    if(err) return err;
+
+    //install gpio isr service
+    err = gpio_install_isr_service(0);
+    if(err) return err;
+    //hook isr handler for specific gpio pin
+    gpio_isr_handler_add(this->pin_irq, gpio_isr_handler, (void*) this->pin_irq);
+    if(err) return err;
+
+    // END NEW
+
+    /*err = gpio_set_direction(this->pin_irq, GPIO_MODE_INPUT);
     if(err) return err;
     err = gpio_set_intr_type(this->pin_irq, GPIO_INTR_POSEDGE);
     if(err) return err;
@@ -47,11 +73,12 @@ esp_err_t R502_init(R502Interface *this, uart_port_t _uart_num, gpio_num_t _pin_
     err = gpio_install_isr_service(0);
     if(err) return err;
     err = gpio_isr_handler_add(this->pin_irq, irq_intr, this);
-    if(err) return err;
+    if(err) return err;*/
 
     // wait for R502 to prepare itself
     vTaskDelay(200 / portTICK_PERIOD_MS);
     this->initialized = true;
+    this->interrupt = 0;
     return ESP_OK;
 }
 
@@ -73,11 +100,13 @@ esp_err_t R502_deinit(R502Interface *this)
     return ESP_OK;
 }
 
-static void IRAM_ATTR irq_intr(void *arg)
+/*static void IRAM_ATTR irq_intr(void *arg)
 {
     R502Interface *me = (R502Interface *)arg;
     me->interrupt++;
-}
+    //printf("Interrupt count: %d\n", me->interrupt);
+    //ESP_LOGI(me->TAG, "interrupt count %d", me->interrupt);
+}*/
 
 uint8_t *R502_get_module_address(R502Interface *this){
     return this->adder;
@@ -319,7 +348,7 @@ esp_err_t R502_gen_image(R502Interface *this, R502_conf_code_t *res)
     return ESP_OK;
 }
 
-esp_err_t R502_up_image(R502Interface *this, R502_data_len_t data_len, 
+/*esp_err_t R502_up_image(R502Interface *this, R502_data_len_t data_len, 
     R502_conf_code_t *res)
 {
     R502_DataPkg_t pkg;
@@ -396,7 +425,7 @@ esp_err_t R502_up_image(R502Interface *this, R502_data_len_t data_len,
     ESP_LOGI(this->TAG, "bytes received %d", bytes_received);
 
     return ESP_OK;
-}
+}*/
 
 esp_err_t R502_img_2_tz(R502Interface *this, uint8_t buffer_id, R502_conf_code_t *res)
 {
@@ -435,7 +464,7 @@ esp_err_t R502_reg_model(R502Interface *this, R502_conf_code_t *res)
     R502_DataPkg_t receive_pkg;
     R502_GeneralAck_t *receive_data = &receive_pkg.data.general_ack;
     esp_err_t err = send_command_package(this, &pkg, &receive_pkg, 
-        sizeof(*receive_data), this->default_read_delay);
+        sizeof(*receive_data), this->read_delay_gen_image);
     if(err) return err;
 
     // Return result
@@ -496,7 +525,7 @@ esp_err_t R502_up_char(R502Interface *this, R502_data_len_t data_len, uint8_t bu
 
     // receive data packages
     R502_pid_t pid = R502_pid_data;
-    uint8_t data_cb_buffer[R502_max_data_len];
+    //uint8_t data_cb_buffer[R502_max_data_len];
     uint8_t *rec_data = receive_pkg.data.data.content;
     int bytes_received = 0;
     while(pid == R502_pid_data){
@@ -801,7 +830,7 @@ static esp_err_t send_package(R502Interface *this, const R502_DataPkg_t *pkg)
         //printf("\n");
     //}
 
-    printf("freak out?\n");
+    //printf("freak out?\n");
     int len = uart_write_bytes(this->uart_num, (char *)pkg, pkg_len);
     if(len == -1){
         ESP_LOGE(this->TAG, "uart write error, parameter error");

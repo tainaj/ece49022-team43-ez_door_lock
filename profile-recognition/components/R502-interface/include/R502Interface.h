@@ -29,6 +29,8 @@
  * scanner module
  */
 
+extern xQueueHandle gpio_evt_queue;
+
 typedef void (*up_image_cb_t)(uint8_t*, int);
 typedef void (*up_char_cb_t)(uint8_t*, int);
 
@@ -41,7 +43,10 @@ typedef struct R502Interface {
     // private variables
     const char *TAG;
 
-        // callbacks
+    // interrupt queue handle
+    //xQueueHandle gpio_evt_queue;
+
+    // callbacks
     up_image_cb_t up_image_cb;
     up_char_cb_t up_char_cb;
 
@@ -189,7 +194,7 @@ esp_err_t R502_gen_image(R502Interface *this, R502_conf_code_t *res);
  * \param res OUT confirmation code
  * \retval See vfy_pass for description of all possible return values
  */
-esp_err_t R502_up_image(R502Interface *this, R502_data_len_t data_len, R502_conf_code_t *res);
+//esp_err_t R502_up_image(R502Interface *this, R502_data_len_t data_len, R502_conf_code_t *res);
 
 /**
  * \brief Generate character file from original finger image in ImageBuffer
