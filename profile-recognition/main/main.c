@@ -39,6 +39,17 @@
 
 uint8_t flags;
 
+// TEST ONLY
+uint8_t pin[4] = {1, 2, 3, 4};
+uint8_t privilege = 0;
+// END TEST
+
+void IRAM_ATTR gpio_isr_handler(void* arg)
+{
+    uint32_t gpio_num = (uint32_t) arg;
+    xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+}
+
 // The object under test
 R502Interface R502 = {
     //.gpio_evt_queue = gpio_evt_queue;
@@ -80,17 +91,34 @@ static void gpio_task_example(void* arg)
         if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
             is_pressed = gpio_get_level(io_num);
             ESP_LOGI("main", "GPIO[%d] intr, val: %d", io_num, is_pressed);
+            //if (is_pressed) {
+            //    continue;
+            //}
             // NEW: Do action for GPIO4: Add Profile
             //if ((flags & FL_INPUT_READY) != FL_INPUT_READY) {
-            //    continue;
+              //  continue;
             //}
 
             switch(io_num) {
+                case (GPIO_NUM_23) :
+                case (GPIO_NUM_5) :
+                    if (is_pressed) {
+                        if (io_num == GPIO_NUM_23) {
+                            printf("PIN 1234 entered\n");
+                        }
+                        else {
+                            printf("PIN 5678 entered\n");
+                        }
+                    }
+                    break;
                 case (GPIO_NUM_4) :
                     // Case GPIO4: press finger on scanner
 
-                    /*if (flags & (FL_FP_01)) {
-                        flags &= ~FL_INPUT_READY;
+                    if (is_pressed) {
+                        break;
+                    }
+                    if (flags & FL_FP_01) {
+                        //flags &= ~FL_INPUT_READY;
 
                         ESP_LOGI("main", "count: %d", count);
 
@@ -103,7 +131,7 @@ static void gpio_task_example(void* arg)
                         ESP_LOGI("main", "genImg res: %d", (int)conf_code);
                         if (conf_code != R502_ok) {
                             printf("Bad finger entry: try again\n");
-                            flags |= FL_INPUT_READY;
+                            //flags |= FL_INPUT_READY;
                             break;
                         } 
 
@@ -112,11 +140,9 @@ static void gpio_task_example(void* arg)
                         ESP_LOGI("main", "Img2Tz res: %d", (int)conf_code);
                         if (conf_code != R502_ok) {
                             printf("Bad finger entry: try again\n");
-                            flags |= FL_INPUT_READY;
+                            //flags |= FL_INPUT_READY;
                             break;
                         }
-
-                        flags &= ~FL_FP_0;
 
                         // 4: Decision.
                         // A: VerifyUser (01): search up char file against library and return resuit
@@ -125,19 +151,18 @@ static void gpio_task_example(void* arg)
                             ESP_LOGI("main", "Search res: %d", (int)conf_code);
                             if (conf_code != R502_ok) {
                                 printf("Access denied\n");
-                                flags |= FL_FP_0;
-                                flags |= FL_INPUT_READY;
+                                //flags |= FL_INPUT_READY;
                                 break;
                             }
-                            flags &= ~FL_PIN;
+                            flags &= ~(FL_PIN | FL_FP_0);
                             flags |= FL_SUCCESS;
                             printf("Accepted: %d\n", page_id);
                             flags &= ~FL_SUCCESS;
-                            flags |= FL_FP_0;
+                            flags |= FL_FP_0 | FL_PIN;
                         }
-                    }*/
+                    }
 
-                    if(is_pressed) {
+                    /*if(is_pressed) {
                         printf("Release finger\n");
                     }
                     else {
@@ -188,7 +213,7 @@ static void gpio_task_example(void* arg)
                             count = 1;
                         }
                         
-                    }
+                    }*/
 
                     break;
                 default :
@@ -246,6 +271,20 @@ void app_main(void)
 
     // 6: start at VerifyUser (FSM = 01)
     flags |= FL_VERIFYUSER | FL_PIN | FL_FP_0 | FL_INPUT_READY;
+
+    // 7: configure push-buttons for simulating PIN entry
+    gpio_config_t io_conf;
+    io_conf.intr_type = GPIO_PIN_INTR_POSEDGE;
+    io_conf.pin_bit_mask = ((1ULL << GPIO_NUM_23) | (1ULL << GPIO_NUM_5));
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = 1;
+    io_conf.pull_down_en = 0;
+    gpio_config(&io_conf);
+    //gpio_install_isr_service(0);
+    //gpio_set_intr_type(GPIO_NUM_23, GPIO_INTR_POSEDGE);
+    gpio_isr_handler_add(GPIO_NUM_23, gpio_isr_handler, (void*) GPIO_NUM_23);
+    gpio_isr_handler_add(GPIO_NUM_5, gpio_isr_handler, (void*) GPIO_NUM_5);
+    //gpio_isr_handler_add(GPIO_NUM_25, gpio_isr_handler, (void*) GPIO_NUM_25);
 
     // inf: await the push buttons (in gpio_task_example thread
 }

@@ -5,12 +5,6 @@
 
 uint8_t data_cb_buffer[R502_MAX_DATA_LEN];
 
-static void IRAM_ATTR gpio_isr_handler(void* arg)
-{
-    uint32_t gpio_num = (uint32_t) arg;
-    xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
-}
-
 esp_err_t R502_init(R502Interface *this, uart_port_t _uart_num, gpio_num_t _pin_txd, 
     gpio_num_t _pin_rxd, gpio_num_t _pin_irq, 
     R502_baud_t _baud)

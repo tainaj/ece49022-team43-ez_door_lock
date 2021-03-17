@@ -322,7 +322,7 @@ TEST_CASE("GenImage-Success", "[fingerprint processing][userInput]")
     TEST_ASSERT_EQUAL(R502_ok, conf_code);
 }
 
-TEST_CASE("UpImage", "[fingerprint processing][dataExchange]")
+/*TEST_CASE("UpImage", "[fingerprint processing][dataExchange]")
 {
     esp_err_t err = R502_init(&R502, UART_NUM_1, PIN_TXD, PIN_RXD, PIN_IRQ, R502_baud_115200);
     TEST_ESP_OK(err);
@@ -402,7 +402,7 @@ TEST_CASE("UpImage-Advanced", "[fingerprint processing][dataExchange]")
     err = R502_set_baud_rate(&R502, starting_baud, &conf_code);
     TEST_ESP_OK(err);
     TEST_ASSERT_EQUAL(R502_ok, conf_code);
-}
+}*/
 
 TEST_CASE("Img2Tz-Input", "[fingerprint processing][userInput]")
 {

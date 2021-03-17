@@ -29,6 +29,8 @@
  * scanner module
  */
 
+extern void IRAM_ATTR gpio_isr_handler(void* arg);
+
 extern xQueueHandle gpio_evt_queue;
 
 typedef void (*up_image_cb_t)(uint8_t*, int);
