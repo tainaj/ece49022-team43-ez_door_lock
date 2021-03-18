@@ -120,6 +120,14 @@ esp_err_t verifyUser_fingerprint(uint8_t *flags, uint8_t *ret_code, uint8_t *pri
  */
 esp_err_t verifyUser_PIN(uint8_t *flags, uint8_t *pin_input, uint8_t *ret_code, uint8_t *privilege);
 
+/**
+ * \brief Add one of two fingerprints required to form a template
+ * \param flags status flags
+ * \param ret_code OUT for the return code
+ * \retval See vfy_pass for description of all possible return values
+ */
+esp_err_t addProfile_fingerprint(uint8_t *flags, uint8_t *ret_code);
+
 
 /** -----------------------------------------
  * @file ProfileRecog.c
@@ -260,6 +268,81 @@ esp_err_t verifyUser_PIN(uint8_t *flags, uint8_t *pin_input, uint8_t *ret_code, 
     return ESP_OK;
 }
 
+esp_err_t addProfile_fingerprint(uint8_t *flags, uint8_t *ret_code) {
+    *ret_code = 1;
+
+    if (*flags & FL_FP_0) {
+        // 1: Wait for fingerprint. When received, wait for 500ms.
+        printf("Scanning fingerprint 1...\n");
+        vTaskDelay(20 / portTICK_PERIOD_MS);
+        
+        // 2: Action. GenImg(). Abort if fail
+        R502_gen_image(&R502, &conf_code);
+        ESP_LOGI("main", "genImg res: %d", (int)conf_code);
+        if (conf_code != R502_ok) {
+            printf("Bad finger entry: try again\n");
+            return ESP_FAIL;
+        }
+
+        // 3: Action: Img2Tz(1). Abort if fail
+        R502_img_2_tz(&R502, 1, &conf_code);
+        ESP_LOGI("main", "Img2Tz res: %d", (int)conf_code);
+        if (conf_code != R502_ok) {
+            printf("Bad finger entry: try again\n");
+            return ESP_FAIL;
+        }
+        
+        // 4: Clear fingerprint 0 flag
+        *flags &= ~FL_FP_0;
+    }
+    else if (*flags & FL_FP_1) {
+        // 1: Wait for fingerprint. When received, wait for 500ms.
+        printf("Scanning fingerprint 2...\n");
+        vTaskDelay(20 / portTICK_PERIOD_MS);
+        
+        // 2: Action. GenImg(). Abort if fail
+        R502_gen_image(&R502, &conf_code);
+        ESP_LOGI("main", "genImg res: %d", (int)conf_code);
+        if (conf_code != R502_ok) {
+            printf("Bad finger entry: try again\n");
+            return ESP_FAIL;
+        }
+
+        // 3: Action: Img2Tz(2). Abort if fail
+        R502_img_2_tz(&R502, 2, &conf_code);
+        ESP_LOGI("main", "Img2Tz res: %d", (int)conf_code);
+        if (conf_code != R502_ok) {
+            printf("Bad finger entry: try again\n");
+            return ESP_FAIL;
+        }
+
+        // 4: Action: RegModel()
+        R502_reg_model(&R502, &conf_code);
+        ESP_LOGI("main", "regModel res: %d", (int)conf_code);
+        if (conf_code != R502_ok) {
+            printf("Finger entries do not match\n");
+            return ESP_FAIL;
+        }
+        
+        // 5: Action: UpChar() PLACE AFTER ALL STUFF IS COMPLETE
+        /*R502_up_char(&R502, starting_data_len, 1, &conf_code);
+        ESP_LOGI("main", "upChar res: %d", (int)conf_code);
+        if (conf_code != R502_ok) {
+            printf("Failed to upload template\n");
+            break;
+        }*/
+        
+        // 6: Clear fingerprint 2 flag
+        *flags &= ~FL_FP_1;
+        printf("Fingerprint template created!\n");
+    }
+
+    // Wrap up
+    *ret_code = 0; // 0 = SUCCESS
+
+    return ESP_OK;
+}
+
 /** --------------------------------------------------------------------
  * END SUBSYSTEM    : profileRecog
  * ---------------------------------------------------------------------
@@ -319,7 +402,7 @@ static void gpio_task_example(void* arg)
             //}
 
             switch(io_num) {
-                case (GPIO_NUM_23) :
+                case (GPIO_NUM_23) : // admin button
                     if (!is_pressed) {
                         break;
                     }
@@ -331,7 +414,7 @@ static void gpio_task_example(void* arg)
                     }
                     break;
 
-                case (GPIO_NUM_5) :
+                case (GPIO_NUM_5) : // emnter button
                     if (!is_pressed) {
                         break;
                     }
@@ -368,60 +451,28 @@ static void gpio_task_example(void* arg)
 
                     if ((flags & FL_FSM) == FL_VERIFYUSER) {
                         verifyUser_fingerprint(&flags, &ret_code, &privilege);
-                    }
-
-                    /*if(is_pressed) {
-                        printf("Release finger\n");
-                    }
-                    else {
-                        ESP_LOGI("main", "count: %d", count);
-
-                        // 1: Wait for fingerprint. When received, wait for 500ms.
-                        printf("Scanning fingerprint...\n");
-                        vTaskDelay(20 / portTICK_PERIOD_MS);
-                        
-                        // 2: Action. GenImg(). Abort if fail
-                        R502_gen_image(&R502, &conf_code);
-                        ESP_LOGI("main", "genImg res: %d", (int)conf_code);
-                        if (conf_code != R502_ok) {
-                            printf("Bad finger entry: try again\n");
+                        if (ret_code != 0x0) {
                             break;
                         }
-
-                        // 3: Action: Img2Tz(). Abort if fail
-                        R502_img_2_tz(&R502, count+1, &conf_code);
-                        ESP_LOGI("main", "Img2Tz res: %d", (int)conf_code);
-                        if (conf_code != R502_ok) {
-                            printf("Bad finger entry: try again\n");
-                            break;
-                        }
-
-                        if (count == 1) {
-                            count = 0;
-                            // 4: Action: RegModel()
-                            //while(R502_reg_model(&R502, &conf_code) != R502_);
-                            R502_reg_model(&R502, &conf_code);
-                            ESP_LOGI("main", "regModel res: %d", (int)conf_code);
-                            if (conf_code != R502_ok) {
-                                printf("Bad finger entry: try again\n");
-                                break;
+                        if (accessAdmin) {
+                            if (privilege) {
+                                printf("Accessing admin...\n");
+                                isAdmin = 1;
+                                // TEST ONLY
+                                //flags &= ~(FL_FSM);
+                                //flags |= FL_ADDPROFILE;
+                                flags = FL_ADDPROFILE | FL_PRIVILEGE | FL_PIN | FL_FP_01 | FL_INPUT_READY;
+                                // AND TEST
+                            } else {
+                                printf("Sorry, not admin\n");
                             }
-                            
-                            // 5: Action: UpChar()
-                            R502_up_char(&R502, starting_data_len, 1, &conf_code);
-                            ESP_LOGI("main", "upChar res: %d", (int)conf_code);
-                            if (conf_code != R502_ok) {
-                                printf("Failed to upload template\n");
-                                break;
-                            }
-                            
-                            printf("Successful upload!\n");
+                        } else {
+                            printf("Hello there, opening door\n");
                         }
-                        else {
-                            count = 1;
-                        }
-                        
-                    }*/
+                    }
+                    else if ((flags & FL_FSM) == FL_ADDPROFILE) {
+                        addProfile_fingerprint(&flags, &ret_code);
+                    }
 
                     break;
                 default :

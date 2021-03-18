@@ -46,6 +46,7 @@ esp_err_t R502_init(R502Interface *this, uart_port_t _uart_num, gpio_num_t _pin_
     io_conf.pin_bit_mask = 1ULL<<(this->pin_irq);
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pull_up_en = 0;
+    io_conf.pull_down_en = 0;
     err = gpio_config(&io_conf);
     if(err) return err;
 
