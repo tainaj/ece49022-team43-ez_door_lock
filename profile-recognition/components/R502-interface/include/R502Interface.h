@@ -31,8 +31,6 @@
 
 extern void IRAM_ATTR gpio_isr_handler(void* arg);
 
-extern xQueueHandle gpio_evt_queue;
-
 typedef void (*up_image_cb_t)(uint8_t*, int);
 typedef void (*up_char_cb_t)(uint8_t*, int);
 
@@ -44,9 +42,6 @@ typedef struct R502Interface {
 
     // private variables
     const char *TAG;
-
-    // interrupt queue handle
-    //xQueueHandle gpio_evt_queue;
 
     // callbacks
     up_image_cb_t up_image_cb;
@@ -385,6 +380,6 @@ static void conv_16_to_8(const uint16_t in, uint8_t out[2]);
 
 static void busy_delay(int64_t microseconds);
 
-static void IRAM_ATTR irq_intr(void *arg);
+extern void IRAM_ATTR irq_intr(void *arg);
 
 #endif /* R502INTERFACE_H */
