@@ -5,7 +5,17 @@
     "string": "c",
     "string_view": "c",
     "*.inc": "c",
-    "profilerecog.h": "c"
+    "profilerecog.h": "c",
+    "*.tcc": "c",
+    "list": "c",
+    "unordered_map": "c",
+    "unordered_set": "c",
+    "fstream": "c",
+    "istream": "c",
+    "ostream": "c",
+    "streambuf": "c",
+    "functional": "c",
+    "*.ipp": "c"
   },
   "idf.portWin": "COM4",
   "idf.flashType": "UART"

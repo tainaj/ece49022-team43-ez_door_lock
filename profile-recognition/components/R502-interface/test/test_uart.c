@@ -579,7 +579,7 @@ TEST_CASE("Store", "[fingerprint processing]")
 
     // main test
     uint8_t buffer_id = 1;
-    uint16_t page_id = 36;
+    uint16_t page_id = 0;
     err = R502_store(&R502, buffer_id, page_id, &conf_code);
     TEST_ESP_OK(err);
     TEST_ASSERT_EQUAL(R502_ok, conf_code);
@@ -592,7 +592,7 @@ TEST_CASE("DeletChar", "[fingerprint processing]")
     R502_conf_code_t conf_code;
 
     // main test
-    uint16_t page_id = 36;
+    uint16_t page_id = 0;
     uint16_t n = 1;
     err = R502_delet_char(&R502, page_id, n, &conf_code);
     TEST_ESP_OK(err);
@@ -626,7 +626,7 @@ TEST_CASE("Search", "[fingerprint processing]")
     err = R502_search(&R502, buffer_id, start_page, page_num, &conf_code, &page_id, &match_score);
     TEST_ESP_OK(err);
     TEST_ASSERT_EQUAL(R502_ok, conf_code);
-    TEST_ASSERT_EQUAL(page_id, 36);
+    TEST_ASSERT_EQUAL(page_id, 0);
 }
 
 TEST_CASE("LedConfig-control", "[other]")

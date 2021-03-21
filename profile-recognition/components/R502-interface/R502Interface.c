@@ -41,34 +41,19 @@ esp_err_t R502_init(R502Interface *this, uart_port_t _uart_num, gpio_num_t _pin_
 
     /* Configure parameters of a pin_isr interrupt,
      * communication pins and install the driver */
-    gpio_config_t io_conf;
-    io_conf.intr_type = GPIO_PIN_INTR_NEGEDGE;
-    io_conf.pin_bit_mask = 1ULL<<(this->pin_irq);
-    io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pull_up_en = 0;
-    io_conf.pull_down_en = 0;
+    gpio_config_t io_conf = {
+        .intr_type = GPIO_PIN_INTR_NEGEDGE,
+        .pin_bit_mask = 1ULL<<(this->pin_irq),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = 0,
+        .pull_down_en = 0
+    };
     err = gpio_config(&io_conf);
     if(err) return err;
 
-    //install gpio isr service
-    err = gpio_install_isr_service(0);
-    if(err) return err;
-    //hook isr handler for specific gpio pin
+    //hook isr handler for specific gpio pin (first requires gpi_iser_install_service(0))
     gpio_isr_handler_add(this->pin_irq, gpio_isr_handler, (void*) this->pin_irq);
     if(err) return err;
-
-    // END NEW
-
-    /*err = gpio_set_direction(this->pin_irq, GPIO_MODE_INPUT);
-    if(err) return err;
-    err = gpio_set_intr_type(this->pin_irq, GPIO_INTR_POSEDGE);
-    if(err) return err;
-    err = gpio_intr_enable(this->pin_irq);
-    if(err) return err;
-    err = gpio_install_isr_service(0);
-    if(err) return err;
-    err = gpio_isr_handler_add(this->pin_irq, irq_intr, this);
-    if(err) return err;*/
 
     // wait for R502 to prepare itself
     vTaskDelay(200 / portTICK_PERIOD_MS);
