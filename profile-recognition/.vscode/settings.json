@@ -15,7 +15,8 @@
     "ostream": "c",
     "streambuf": "c",
     "functional": "c",
-    "*.ipp": "c"
+    "*.ipp": "c",
+    "esp_spi_flash.h": "c"
   },
   "idf.portWin": "COM4",
   "idf.flashType": "UART"
