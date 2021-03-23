@@ -2,6 +2,7 @@
 #define PROF_RECOG_H_
 
 #include "R502Interface.h"
+#include "SD-Interface.h"
 
 /**
  * @mainpage Profile recognition submodule

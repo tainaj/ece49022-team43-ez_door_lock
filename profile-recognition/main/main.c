@@ -217,5 +217,9 @@ void app_main(void)
     if (esp_task_wdt_delete(NULL) != ESP_OK) {
         ESP_LOGW("main", "failure to unsubscribe main loop from task watchdog");
     }
+
+    // 7: Initialize SD card
+    SD_init();
+
     return;
 }
