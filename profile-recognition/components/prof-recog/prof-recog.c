@@ -66,6 +66,10 @@ R502Interface R502 = {
 };
 
 
+// NEW: SD card stuff
+
+
+
 // private functions
 static esp_err_t genImg_Img2Tz(uint8_t buffer_id) {
 
@@ -114,6 +118,8 @@ esp_err_t profileRecog_init() {
     R502_set_up_char_cb(&R502, up_char_callback);
     up_char_size = 0;
     printf("starting_data_len: %d\n", starting_data_len);
+
+    SD_init();
 
     return ESP_OK;
 }
@@ -347,7 +353,7 @@ esp_err_t addProfile_compile(uint8_t *flags, uint8_t *ret_code) {
 
     // TEST: print contents
     printf("-----------------------------------------------\n");
-    printf("Profile to be sent to SD card\n");
+    printf("Profile to be sent to SD card: %d\n", page_id);
     // a) PIN
     printf("PIN: ");
     for (int i = 0; i < 4; i++) {
@@ -381,6 +387,34 @@ esp_err_t addProfile_compile(uint8_t *flags, uint8_t *ret_code) {
 
     // Update the profile slot that is open...
     printf("SD card needed to progress forward\n");
+
+    const char* directory = "/sdcard/profiles/";
+    const char* fileName = "profile";
+    const char* fileType = ".bin";
+
+    char name_buffer[512];
+    int i = page_id;
+
+    const int count = 200;
+
+    sprintf(name_buffer, "%s%s%d%s", directory, fileName, i, fileType);
+    printf("%s\n", name_buffer);
+    FILE* f = fopen(name_buffer, "w");
+    if (f == NULL) {
+        ESP_LOGE("main", "Failed to open file for writing");
+        return ESP_FAIL;
+    }
+
+    // Write 4-byte PIN to file
+    fwrite(pinBuffer, sizeof(uint8_t), 4, f);
+
+    // Write 1-byte privilege to file
+    fwrite(&privBuffer, sizeof(uint8_t), 1, f);
+
+    // Write 384x4 (1536) byte fingerprint template to file
+    fwrite(fingerprintBuffer, sizeof(uint8_t), R502_TEMPLATE_SIZE, f);
+
+    fclose(f);
 
     return ESP_OK;
 }

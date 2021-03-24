@@ -76,7 +76,7 @@ static void gpio_task_example(void* arg)
             //}
 
             switch(io_num) {
-                case (GPIO_NUM_23) : // admin button
+                case (GPIO_NUM_22) : // admin button
                     if (!is_pressed) {
                         break;
                     }
@@ -88,7 +88,7 @@ static void gpio_task_example(void* arg)
                     }
                     break;
 
-                case (GPIO_NUM_5) : // enter button
+                case (GPIO_NUM_21) : // enter button
                     if (!is_pressed) {
                         break;
                     }
@@ -201,13 +201,13 @@ void app_main(void)
     // 5: configure push-buttons for simulating PIN entry and mode (TEST)
     gpio_config_t io_conf;
     io_conf.intr_type = GPIO_PIN_INTR_POSEDGE;
-    io_conf.pin_bit_mask = ((1ULL << GPIO_NUM_23) | (1ULL << GPIO_NUM_5));
+    io_conf.pin_bit_mask = ((1ULL << GPIO_NUM_22) | (1ULL << GPIO_NUM_21));
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pull_up_en = 1;
     io_conf.pull_down_en = 0;
     gpio_config(&io_conf);
-    gpio_isr_handler_add(GPIO_NUM_23, gpio_isr_handler, (void*) GPIO_NUM_23);
-    gpio_isr_handler_add(GPIO_NUM_5, gpio_isr_handler, (void*) GPIO_NUM_5);
+    gpio_isr_handler_add(GPIO_NUM_22, gpio_isr_handler, (void*) GPIO_NUM_22);
+    gpio_isr_handler_add(GPIO_NUM_21, gpio_isr_handler, (void*) GPIO_NUM_21);
 
     // 6: start at VerifyUser (FSM = 01). Start in Open Door mode (isAdmin = 0)
     flags |= FL_VERIFYUSER | FL_PIN | FL_FP_0 | FL_INPUT_READY;
@@ -219,7 +219,61 @@ void app_main(void)
     }
 
     // 7: Initialize SD card
-    SD_init();
+    //SD_init();
+
+    // 8: test sprintf
+    // Use example from 
+    // https://programmerfish.com/create-output-file-names-using-a-variable-in-c-c/ 
+    /*const char* directory = "/sdcard/profiles/";
+    const char* fileName = "profile";
+    const char* fileType = ".bin";
+
+    char name_buffer[512];
+    uint8_t hello[4] = {0x50, 0x50, 0x50, 0x50};
+    int i;
+
+    const int count = 200;
+
+    for (i = 0; i < count; i++) {
+        sprintf(name_buffer, "%s%s%d%s", directory, fileName, i, fileType);
+        printf("%s\n", name_buffer);
+        FILE* f = fopen(name_buffer, "w");
+        if (f == NULL) {
+            ESP_LOGE("main", "Failed to open file for writing");
+            return;
+        }
+        fwrite(hello, sizeof(uint8_t), 4, f);
+        fclose(f);
+    }*/
+
+
+
+    //sprintf(name_buffer, "%s%s%d%s", directory, fileName, r, fileType);
+    //printf("%s\n", name_buffer);
+
+    //FILE* f = fopen(name_buffer, "w");
+    //FILE* f = fopen(MOUNT_POINT"/profiles/profile1.bin", "w");
+    //if (f == NULL) {
+    //    ESP_LOGE("main", "Failed to open file for writing");
+    //    return;
+    //}
+    //uint8_t hello[4] = {0x50, 0x50, 0x50, 0x50};
+    //fwrite(hello, sizeof(uint8_t), 4, f);
+    //fclose(f);
+
+    /*fopen();
+        ESP_LOGI(TAG, "Opening file");
+    FILE* f = fopen(MOUNT_POINT"/profiles/hello.txt", "w");
+    if (f == NULL) {
+        ESP_LOGE(TAG, "Failed to open file for writing");
+        return;
+    }
+    fprintf(f, "Hello %s!\n", card->cid.name);
+    fclose(f);*/
+    ESP_LOGI("main", "File written");
+
+    // End test
+    //spi_bus_free(host.slot);
 
     return;
 }

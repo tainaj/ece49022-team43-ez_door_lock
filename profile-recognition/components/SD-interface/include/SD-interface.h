@@ -32,6 +32,42 @@
  * \brief Provides command-level api to interact with the SD card reader
  */
 
+#define MOUNT_POINT "/sdcard"
+
+// This example can use SDMMC and SPI peripherals to communicate with SD card.
+// By default, SDMMC peripheral is used.
+// To enable SPI mode, uncomment the following line:
+
+#define USE_SPI_MODE
+
+// ESP32-S2 doesn't have an SD Host peripheral, always use SPI:
+#ifdef CONFIG_IDF_TARGET_ESP32S2
+#ifndef USE_SPI_MODE
+#define USE_SPI_MODE
+#endif // USE_SPI_MODE
+// on ESP32-S2, DMA channel must be the same as host id
+#define SPI_DMA_CHAN    host.slot
+#endif //CONFIG_IDF_TARGET_ESP32S2
+
+// DMA channel to be used by the SPI peripheral
+#ifndef SPI_DMA_CHAN
+#define SPI_DMA_CHAN    1
+#endif //SPI_DMA_CHAN
+
+// When testing SD and SPI modes, keep in mind that once the card has been
+// initialized in SPI mode, it can not be reinitialized in SD mode without
+// toggling power to the card.
+
+#ifdef USE_SPI_MODE
+// Pin mapping when using SPI mode.
+// With this mapping, SD card can be used both in SPI and 1-line SD mode.
+// Note that a pull-up on CS line is required in SD mode.
+#define PIN_NUM_MISO 19
+#define PIN_NUM_MOSI 23
+#define PIN_NUM_CLK  18
+#define PIN_NUM_CS   5
+#endif //USE_SPI_MODE
+
 /**
  * \brief Initialize SD interface, must call first
  */

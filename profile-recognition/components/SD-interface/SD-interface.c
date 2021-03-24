@@ -1,52 +1,9 @@
 #include "SD-interface.h"
 
-
-
-static const char *TAG = "example";
-
-//#define MOUNT_POINT "/sdcard"
-// NEW
-#define MOUNT_POINT "/sdcard"
-
-// This example can use SDMMC and SPI peripherals to communicate with SD card.
-// By default, SDMMC peripheral is used.
-// To enable SPI mode, uncomment the following line:
-
-#define USE_SPI_MODE
-
-// ESP32-S2 doesn't have an SD Host peripheral, always use SPI:
-#ifdef CONFIG_IDF_TARGET_ESP32S2
-#ifndef USE_SPI_MODE
-#define USE_SPI_MODE
-#endif // USE_SPI_MODE
-// on ESP32-S2, DMA channel must be the same as host id
-#define SPI_DMA_CHAN    host.slot
-#endif //CONFIG_IDF_TARGET_ESP32S2
-
-// DMA channel to be used by the SPI peripheral
-#ifndef SPI_DMA_CHAN
-#define SPI_DMA_CHAN    1
-#endif //SPI_DMA_CHAN
-
-// When testing SD and SPI modes, keep in mind that once the card has been
-// initialized in SPI mode, it can not be reinitialized in SD mode without
-// toggling power to the card.
-
-#ifdef USE_SPI_MODE
-// Pin mapping when using SPI mode.
-// With this mapping, SD card can be used both in SPI and 1-line SD mode.
-// Note that a pull-up on CS line is required in SD mode.
-#define PIN_NUM_MISO 2
-#define PIN_NUM_MOSI 15
-#define PIN_NUM_CLK  14
-#define PIN_NUM_CS   13
-#endif //USE_SPI_MODE
+static const char *TAG = "SD-interface";
 
 void SD_init(void)
 {
-    ESP_LOGI(TAG, "Wait");
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
-    ESP_LOGI(TAG, "Start");
 
     esp_err_t ret;
     // Options for mounting the filesystem.
@@ -108,18 +65,14 @@ void SD_init(void)
         return;
     }
 
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
     // NEW: Change GPIO2 to pull-up mode
     gpio_set_pull_mode(GPIO_NUM_2, GPIO_PULLUP_ONLY);
-    //gpio_pull_mode_t
 
     // This initializes the slot without card detect (CD) and write protect (WP) signals.
     // Modify slot_config.gpio_cd and slot_config.gpio_wp if your board has these signals.
     sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
     slot_config.gpio_cs = PIN_NUM_CS;
     slot_config.host_id = host.slot;
-
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
 
     ret = esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config, &mount_config, &card);
 #endif //USE_SPI_MODE
@@ -140,7 +93,8 @@ void SD_init(void)
 
     // Use POSIX and C standard library functions to work with files.
     // First create a file.
-    ESP_LOGI(TAG, "Opening file");
+    
+    /*ESP_LOGI(TAG, "Opening file");
     FILE* f = fopen(MOUNT_POINT"/profiles/hello.txt", "w");
     if (f == NULL) {
         ESP_LOGE(TAG, "Failed to open file for writing");
@@ -186,8 +140,8 @@ void SD_init(void)
     ESP_LOGI(TAG, "Card unmounted");
 #ifdef USE_SPI_MODE
     //deinitialize the bus after all devices are removed
-    spi_bus_free(host.slot);
-#endif
+    //spi_bus_free(host.slot);
+#endif*/
 }
 
 // NEW STUFF
