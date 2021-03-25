@@ -5,6 +5,196 @@
 
 uint8_t data_cb_buffer[R502_MAX_DATA_LEN];
 
+// Private functions
+
+static esp_err_t send_command_package(R502Interface *this, const R502_DataPkg_t *pkg,
+    R502_DataPkg_t *receive_pkg, int data_rec_length, int read_delay_ms)
+{
+    esp_err_t err = send_package(this, pkg);
+    if(err) return err;
+    return receive_package(this, receive_pkg, data_rec_length + this->header_size, 
+        read_delay_ms);
+}
+
+
+static esp_err_t send_package(R502Interface *this, const R502_DataPkg_t *pkg)
+{
+    int pkg_len = package_length(pkg);
+    if(pkg_len < this->header_size + sizeof(R502_GeneralCommand_t) || 
+        pkg_len > sizeof(R502_DataPkg_t))
+    {
+        ESP_LOGE(this->TAG, "package length not set correctly");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    //printf("Send Data\n");
+    //int printed = 0;
+    //while(printed < pkg_len){
+        //for(int i = 0; i < 8 && printed < pkg_len; i++){
+            //printf("0x%02X ", *((uint8_t *)&pkg+printed));
+            //printed++;
+        //}
+        //printf("\n");
+    //}
+
+    //printf("freak out?\n");
+    int len = uart_write_bytes(this->uart_num, (char *)pkg, pkg_len);
+    if(len == -1){
+        ESP_LOGE(this->TAG, "uart write error, parameter error");
+        return ESP_ERR_INVALID_STATE;
+    }
+    else if(len != package_length(pkg)){
+        // not all data transferred
+        ESP_LOGE(this->TAG, "uart write error, wrong number of bytes written");
+        return ESP_ERR_INVALID_SIZE;
+    }
+    return ESP_OK;
+}
+
+static esp_err_t receive_package(R502Interface *this, const R502_DataPkg_t *rec_pkg,
+    int data_length, int read_delay_ms)
+{
+    int len = uart_read_bytes(this->uart_num, (uint8_t *)rec_pkg, data_length,
+        read_delay_ms / portTICK_RATE_MS);
+    
+    //ESP_LOGI(this->TAG, "received %d bytes", len);
+
+    if(len == -1){
+        ESP_LOGE(this->TAG, "uart read error, parameter error");
+        return ESP_ERR_INVALID_STATE;
+    }
+    else if(len == 0){
+        ESP_LOGE(this->TAG, "uart read error, R502 not found");
+        return ESP_ERR_NOT_FOUND;
+    }
+    // This check is uncesseccary, it'll probably fail the crc cause it doesn't
+    // write data into the last crc byte if this is the case
+    else if(len < data_length){
+        ESP_LOGE(this->TAG, "uart read error, not enough bytes read, %d < %d", 
+            len, data_length);
+        uart_flush(this->uart_num);
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+
+    //printf("response Data\n");
+    //int printed = 0;
+    //while(printed < len){
+        //for(int i = 0; i < 8 && printed < len; i++){
+            //printf("0x%02X ", *((uint8_t *)&rec_pkg+printed));
+            //printed++;
+        //}
+        //printf("\n");
+    //}
+
+    // Verify response
+    if(!verify_checksum(rec_pkg)){
+        ESP_LOGE(this->TAG, "uart read error, invalid CRC"); 
+        uart_flush(this->uart_num);
+        return ESP_ERR_INVALID_CRC;
+    }
+    esp_err_t err = verify_headers(this, rec_pkg, len - this->header_size);
+    if(err){
+        uart_flush(this->uart_num);
+    }
+    return err;
+}
+
+static void busy_delay(int64_t microseconds)
+{
+    // wait
+    int64_t time_start = esp_timer_get_time();
+    while(esp_timer_get_time() < time_start + microseconds);
+}
+
+static void fill_checksum(R502_DataPkg_t *package)
+{
+    int data_length = conv_8_to_16(package->length) - 2; // -2 for the 2 byte CS
+    int sum = package->pid + package->length[0] + package->length[1];
+    uint8_t *itr = (uint8_t *)&(package->data);
+    for(int i = 0; i < data_length; i++){
+        sum += *itr++;
+    }
+    // Now itr is pointing to the first checksum byte
+    *itr = (sum >> 8) & 0xff;
+    *++itr = sum & 0xff;
+}
+
+static bool verify_checksum(const R502_DataPkg_t *package)
+{
+    int data_length = conv_8_to_16(package->length) - 2; // -2 for the 2 byte CS
+    int sum = package->pid + package->length[0] + package->length[1];
+    uint8_t *itr = (uint8_t *)&(package->data);
+    for(int i = 0; i < data_length; i++){
+        sum += *itr++;
+    }
+    int checksum = *itr << 8;
+    checksum += *++itr;
+
+    return (sum == checksum);
+}
+
+static esp_err_t verify_headers(R502Interface *this, const R502_DataPkg_t *pkg, 
+    uint16_t length)
+{
+    // start
+    if(memcmp(pkg->start, this->start, sizeof(this->start)) != 0){
+        ESP_LOGE(this->TAG, "Response has invalid start");
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+
+    // module address
+    if(memcmp(pkg->adder, this->adder, sizeof(this->adder)) != 0){
+        ESP_LOGE(this->TAG, "Response has invalid adder");
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+
+    // pid
+    if(pkg->pid != R502_pid_command && pkg->pid != R502_pid_data && 
+        pkg->pid != R502_pid_ack && pkg->pid != R502_pid_end_of_data){
+        ESP_LOGE(this->TAG, "Response has invalid pid, %d", pkg->pid);
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+
+    // length
+    if(conv_8_to_16(pkg->length) != length){
+        ESP_LOGE(this->TAG, "Response has invalid length, %d vs %dB received", 
+            conv_8_to_16(pkg->length), length);
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+
+    return ESP_OK;
+}
+
+static void set_headers(R502Interface *this, R502_DataPkg_t *package, R502_pid_t pid,
+    uint16_t length)
+{
+    memcpy(package->start, this->start, sizeof(this->start));
+    memcpy(package->adder, this->adder, sizeof(this->adder));
+
+    package->pid = pid;
+
+    package->length[0] = (length >> 8) & 0xff;
+    package->length[1] = length & 0xff;
+}
+
+
+static uint16_t conv_8_to_16(const uint8_t in[2])
+{
+    return (in[0] << 8) + in[1];
+}
+
+static void conv_16_to_8(const uint16_t in, uint8_t out[2])
+{
+    out[0] = (in >> 8) & 0xff;
+    out[1] = in & 0xff;
+}
+
+static uint16_t package_length(const R502_DataPkg_t *pkg){
+    return sizeof(*pkg) - sizeof(pkg->data) + conv_8_to_16(pkg->length);
+}
+
+// Public API
+
 esp_err_t R502_init(R502Interface *this, uart_port_t _uart_num, gpio_num_t _pin_txd, 
     gpio_num_t _pin_rxd, gpio_num_t _pin_irq, 
     R502_baud_t _baud)
@@ -601,7 +791,12 @@ esp_err_t R502_down_char(R502Interface *this, R502_data_len_t data_len, uint8_t 
     int i = 1;
     while (i <= packet_num) {
         // Fill data package
-        set_headers(this, &pkg2, R502_pid_data, length);
+        if (i == packet_num) {
+            set_headers(this, &pkg2, R502_pid_end_of_data, length);
+        } else {
+            set_headers(this, &pkg2, R502_pid_data, length);
+        }
+
         for (int j = 0; j < data_len_i; j++) {
             (data2->content)[j] = char_data[data_len_i*(i-1) + j];
         }
@@ -614,16 +809,8 @@ esp_err_t R502_down_char(R502Interface *this, R502_data_len_t data_len, uint8_t 
         i++;
     }
 
-    // Fill end of data package
-    set_headers(this, &pkg2, R502_pid_end_of_data, length);
-    for (int j = 0; j < data_len_i; j++) {
-        (data2->content)[j] = 0xfa;
-    }
-    fill_checksum(&pkg2);
-
-    // Send package, get response
-    err = send_package(this, &pkg2);
-    if(err) return err;
+    // Wait 20ms for R502 to internally acknowledge completion (empirically tested)
+    vTaskDelay(20 / portTICK_PERIOD_MS);
 
     ESP_LOGI(this->TAG, "bytes sent %d", char_data_length);
 
@@ -777,191 +964,4 @@ esp_err_t R502_led_config(R502Interface *this, R502_led_ctrl_t ctrl, uint8_t spe
     // Return result
     *res = (R502_conf_code_t)receive_data->conf_code;
     return ESP_OK;
-}
-
-
-static esp_err_t send_command_package(R502Interface *this, const R502_DataPkg_t *pkg,
-    R502_DataPkg_t *receive_pkg, int data_rec_length, int read_delay_ms)
-{
-    esp_err_t err = send_package(this, pkg);
-    if(err) return err;
-    return receive_package(this, receive_pkg, data_rec_length + this->header_size, 
-        read_delay_ms);
-}
-
-
-static esp_err_t send_package(R502Interface *this, const R502_DataPkg_t *pkg)
-{
-    int pkg_len = package_length(pkg);
-    if(pkg_len < this->header_size + sizeof(R502_GeneralCommand_t) || 
-        pkg_len > sizeof(R502_DataPkg_t))
-    {
-        ESP_LOGE(this->TAG, "package length not set correctly");
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    //printf("Send Data\n");
-    //int printed = 0;
-    //while(printed < pkg_len){
-        //for(int i = 0; i < 8 && printed < pkg_len; i++){
-            //printf("0x%02X ", *((uint8_t *)&pkg+printed));
-            //printed++;
-        //}
-        //printf("\n");
-    //}
-
-    //printf("freak out?\n");
-    int len = uart_write_bytes(this->uart_num, (char *)pkg, pkg_len);
-    if(len == -1){
-        ESP_LOGE(this->TAG, "uart write error, parameter error");
-        return ESP_ERR_INVALID_STATE;
-    }
-    else if(len != package_length(pkg)){
-        // not all data transferred
-        ESP_LOGE(this->TAG, "uart write error, wrong number of bytes written");
-        return ESP_ERR_INVALID_SIZE;
-    }
-    return ESP_OK;
-}
-
-static esp_err_t receive_package(R502Interface *this, const R502_DataPkg_t *rec_pkg,
-    int data_length, int read_delay_ms)
-{
-    int len = uart_read_bytes(this->uart_num, (uint8_t *)rec_pkg, data_length,
-        read_delay_ms / portTICK_RATE_MS);
-    
-    //ESP_LOGI(this->TAG, "received %d bytes", len);
-
-    if(len == -1){
-        ESP_LOGE(this->TAG, "uart read error, parameter error");
-        return ESP_ERR_INVALID_STATE;
-    }
-    else if(len == 0){
-        ESP_LOGE(this->TAG, "uart read error, R502 not found");
-        return ESP_ERR_NOT_FOUND;
-    }
-    // This check is uncesseccary, it'll probably fail the crc cause it doesn't
-    // write data into the last crc byte if this is the case
-    else if(len < data_length){
-        ESP_LOGE(this->TAG, "uart read error, not enough bytes read, %d < %d", 
-            len, data_length);
-        uart_flush(this->uart_num);
-        return ESP_ERR_INVALID_RESPONSE;
-    }
-
-    //printf("response Data\n");
-    //int printed = 0;
-    //while(printed < len){
-        //for(int i = 0; i < 8 && printed < len; i++){
-            //printf("0x%02X ", *((uint8_t *)&rec_pkg+printed));
-            //printed++;
-        //}
-        //printf("\n");
-    //}
-
-    // Verify response
-    if(!verify_checksum(rec_pkg)){
-        ESP_LOGE(this->TAG, "uart read error, invalid CRC"); 
-        uart_flush(this->uart_num);
-        return ESP_ERR_INVALID_CRC;
-    }
-    esp_err_t err = verify_headers(this, rec_pkg, len - this->header_size);
-    if(err){
-        uart_flush(this->uart_num);
-    }
-    return err;
-}
-
-static void busy_delay(int64_t microseconds)
-{
-    // wait
-    int64_t time_start = esp_timer_get_time();
-    while(esp_timer_get_time() < time_start + microseconds);
-}
-
-static void fill_checksum(R502_DataPkg_t *package)
-{
-    int data_length = conv_8_to_16(package->length) - 2; // -2 for the 2 byte CS
-    int sum = package->pid + package->length[0] + package->length[1];
-    uint8_t *itr = (uint8_t *)&(package->data);
-    for(int i = 0; i < data_length; i++){
-        sum += *itr++;
-    }
-    // Now itr is pointing to the first checksum byte
-    *itr = (sum >> 8) & 0xff;
-    *++itr = sum & 0xff;
-}
-
-static bool verify_checksum(const R502_DataPkg_t *package)
-{
-    int data_length = conv_8_to_16(package->length) - 2; // -2 for the 2 byte CS
-    int sum = package->pid + package->length[0] + package->length[1];
-    uint8_t *itr = (uint8_t *)&(package->data);
-    for(int i = 0; i < data_length; i++){
-        sum += *itr++;
-    }
-    int checksum = *itr << 8;
-    checksum += *++itr;
-
-    return (sum == checksum);
-}
-
-static esp_err_t verify_headers(R502Interface *this, const R502_DataPkg_t *pkg, 
-    uint16_t length)
-{
-    // start
-    if(memcmp(pkg->start, this->start, sizeof(this->start)) != 0){
-        ESP_LOGE(this->TAG, "Response has invalid start");
-        return ESP_ERR_INVALID_RESPONSE;
-    }
-
-    // module address
-    if(memcmp(pkg->adder, this->adder, sizeof(this->adder)) != 0){
-        ESP_LOGE(this->TAG, "Response has invalid adder");
-        return ESP_ERR_INVALID_RESPONSE;
-    }
-
-    // pid
-    if(pkg->pid != R502_pid_command && pkg->pid != R502_pid_data && 
-        pkg->pid != R502_pid_ack && pkg->pid != R502_pid_end_of_data){
-        ESP_LOGE(this->TAG, "Response has invalid pid, %d", pkg->pid);
-        return ESP_ERR_INVALID_RESPONSE;
-    }
-
-    // length
-    if(conv_8_to_16(pkg->length) != length){
-        ESP_LOGE(this->TAG, "Response has invalid length, %d vs %dB received", 
-            conv_8_to_16(pkg->length), length);
-        return ESP_ERR_INVALID_RESPONSE;
-    }
-
-    return ESP_OK;
-}
-
-static void set_headers(R502Interface *this, R502_DataPkg_t *package, R502_pid_t pid,
-    uint16_t length)
-{
-    memcpy(package->start, this->start, sizeof(this->start));
-    memcpy(package->adder, this->adder, sizeof(this->adder));
-
-    package->pid = pid;
-
-    package->length[0] = (length >> 8) & 0xff;
-    package->length[1] = length & 0xff;
-}
-
-
-static uint16_t conv_8_to_16(const uint8_t in[2])
-{
-    return (in[0] << 8) + in[1];
-}
-
-static void conv_16_to_8(const uint16_t in, uint8_t out[2])
-{
-    out[0] = (in >> 8) & 0xff;
-    out[1] = in & 0xff;
-}
-
-static uint16_t package_length(const R502_DataPkg_t *pkg){
-    return sizeof(*pkg) - sizeof(pkg->data) + conv_8_to_16(pkg->length);
 }

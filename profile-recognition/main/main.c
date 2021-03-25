@@ -33,10 +33,10 @@ uint8_t flags = 0; // used to track inputs
 // ------TEST ONLY-------------
 
 // Sample input PIN and privilege
-uint8_t pin1[4] = {1, 2, 3, 4}; // user
-uint8_t pin2[4] = {5, 6, 7, 8}; // admin
+uint8_t pin1[4] = {1, 2, 3, 4}; // default admin
+uint8_t pin2[4] = {5, 6, 7, 8}; // invalid
 uint8_t pin3[4] = {1, 2, 4, 8}; // invalid
-uint8_t *pinEnter = pin3;
+uint8_t *pinEnter = pin1;
 uint8_t privEnter = 1;          // user-type
 
 // --------------END TEST-----------------
@@ -120,6 +120,7 @@ static void gpio_task_example(void* arg)
                     }
                     else if ((flags & FL_FSM) == FL_ADDPROFILE) {
                         if (flags & FL_PIN) {
+                            pinEnter = pin3;
                             addProfile_PIN(&flags, pinEnter, &ret_code);
                         }
                         else if (flags & FL_PRIVILEGE) {
@@ -217,63 +218,6 @@ void app_main(void)
     if (esp_task_wdt_delete(NULL) != ESP_OK) {
         ESP_LOGW("main", "failure to unsubscribe main loop from task watchdog");
     }
-
-    // 7: Initialize SD card
-    //SD_init();
-
-    // 8: test sprintf
-    // Use example from 
-    // https://programmerfish.com/create-output-file-names-using-a-variable-in-c-c/ 
-    /*const char* directory = "/sdcard/profiles/";
-    const char* fileName = "profile";
-    const char* fileType = ".bin";
-
-    char name_buffer[512];
-    uint8_t hello[4] = {0x50, 0x50, 0x50, 0x50};
-    int i;
-
-    const int count = 200;
-
-    for (i = 0; i < count; i++) {
-        sprintf(name_buffer, "%s%s%d%s", directory, fileName, i, fileType);
-        printf("%s\n", name_buffer);
-        FILE* f = fopen(name_buffer, "w");
-        if (f == NULL) {
-            ESP_LOGE("main", "Failed to open file for writing");
-            return;
-        }
-        fwrite(hello, sizeof(uint8_t), 4, f);
-        fclose(f);
-    }*/
-
-
-
-    //sprintf(name_buffer, "%s%s%d%s", directory, fileName, r, fileType);
-    //printf("%s\n", name_buffer);
-
-    //FILE* f = fopen(name_buffer, "w");
-    //FILE* f = fopen(MOUNT_POINT"/profiles/profile1.bin", "w");
-    //if (f == NULL) {
-    //    ESP_LOGE("main", "Failed to open file for writing");
-    //    return;
-    //}
-    //uint8_t hello[4] = {0x50, 0x50, 0x50, 0x50};
-    //fwrite(hello, sizeof(uint8_t), 4, f);
-    //fclose(f);
-
-    /*fopen();
-        ESP_LOGI(TAG, "Opening file");
-    FILE* f = fopen(MOUNT_POINT"/profiles/hello.txt", "w");
-    if (f == NULL) {
-        ESP_LOGE(TAG, "Failed to open file for writing");
-        return;
-    }
-    fprintf(f, "Hello %s!\n", card->cid.name);
-    fclose(f);*/
-    ESP_LOGI("main", "File written");
-
-    // End test
-    //spi_bus_free(host.slot);
 
     return;
 }
