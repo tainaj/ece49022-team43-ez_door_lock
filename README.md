@@ -39,10 +39,10 @@ ESP32 development boards need to be connected to the SD card as follows:
 
 ESP32 pin        | SD card pin | SPI pin  | Notes
 -----------------|-------------|----------|------------
-GPIO14 (HSPICLK) | CLK         | SCK      | 
-GPIO15 (HSPICS0) | CMD         | MOSI     | 10k pullup in SPI mode
-GPIO2  (HSPIWP)  | D0          | MISO     | pull low to go to download mode (see Note about GPIO2 below!) 
-GPIO13 (HSPID)   | D3          | CS       | 
+GPIO18 (VSPICLK) | CLK         | SCK      | 10k pullup (on SD reader schematic)
+GPIO23 (VSPID)   | CMD         | MOSI     | 10k pullup (on SD reader schematic)
+GPIO19 (VSPIQ)   | D0          | MISO     | 10k pullup (on SD reader schematic)
+GPIO5 (VSPICS0)  | D3          | CS       | 
 
 ESP32 development boards need to be connected to the R503 module as follows:
 
@@ -87,7 +87,7 @@ ESP32 development boards need to be connected to the Relay and Push Button as fo
 
 ESP32 PIN |      pin      | Notes
 ----------|---------------|--------
-GPIO19    |  Push Button  | Input
+GPIO22    |  Push Button  | Input
 GPIO21    |     Relay     | Output
 
 
@@ -95,9 +95,9 @@ ESP32 development boards need to be connected to the CFAL1602 OLED Display as fo
 
 ESP32 PIN  | LCD pin | Notes
 -----------|---------|--------
-GPIO18     |   SDK   |
-GPIO23     |   MOSI  |
-GPIO5      |    CS   |
+GPIO14     |   SDK   |
+GPIO15     |   MOSI  |
+GPIO13     |    CS   |
 
 *Joel will help with!*
 
