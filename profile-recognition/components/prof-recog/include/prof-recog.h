@@ -58,8 +58,6 @@ typedef struct profile_t {
  */
 esp_err_t profileRecog_init();
 
-extern uint8_t fingerprintBuffer[R502_TEMPLATE_SIZE];    // temp storage for fingerprint template (addProfile, init)
-
 /**
  * \brief Search the library for profile with matching fingerprint
  * \param flags status flags

@@ -144,4 +144,51 @@ void SD_init(void)
 #endif*/
 }
 
-// NEW STUFF
+esp_err_t SD_readProfile(int profile_id, uint8_t *pin_p, int pin_n,
+    uint8_t *priv_p, int priv_n, uint8_t *fp_p, int fp_n) {
+
+    const char* directory = "/sdcard/profiles/";
+    const char* fileName = "profile";
+    const char* fileType = ".bin";
+
+    char name_buffer[512];
+    struct stat st;
+
+    sprintf(name_buffer, "%s%s%d%s", directory, fileName, profile_id, fileType);
+    ESP_LOGI("SD_readProfile", "Looking for file %s", name_buffer);
+
+    // Check if file exists
+    if (stat(name_buffer, &st) != 0) {
+        return ESP_ERR_NOT_FOUND;
+    }
+    ESP_LOGI("SD_readProfile", "File found");
+
+    // Open file
+    FILE *f = fopen(name_buffer, "r");
+    if (f == NULL) {
+        ESP_LOGE("SD_readProfile", "Failed to open file");
+        return ESP_FAIL;
+    }
+
+    // Read 4-byte PIN from file
+    if (fread(pin_p, sizeof(uint8_t), pin_n, f) != pin_n) {
+        ESP_LOGE("SD_readProfile", "PIN not fully read");
+        return ESP_FAIL;
+    }
+
+    // Read 1-byte privilege from file
+    if (fread(priv_p, sizeof(uint8_t), priv_n, f) != priv_n) {
+        ESP_LOGE("SD_readProfile", "Privilege not fully read");
+        return ESP_FAIL;
+    }
+
+    // Read 384x4 (1536) byte fingerprint template from file
+    if (fread(fp_p, sizeof(uint8_t), fp_n, f) != fp_n) {
+        ESP_LOGE("SD_readProfile", "Fingerprint not fully read");
+        return ESP_FAIL;
+    }
+
+    fclose(f);
+
+    return ESP_OK;
+}
