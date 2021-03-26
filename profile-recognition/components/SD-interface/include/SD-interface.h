@@ -74,7 +74,7 @@
 void SD_init();
 
 /**
- * \brief Write profile contents from submodule buffer to SD card
+ * \brief Read profile contents from submodule buffer to SD card
  * \param profile_id Profile number, 1 to MAX_PROFILES
  * \param pin_p Pointer to PIN buffer
  * \param pin_n Size of PIN buffer
@@ -86,5 +86,26 @@ void SD_init();
  */
 esp_err_t SD_readProfile(int profile_id, uint8_t *pin_p, int pin_n,
     uint8_t *priv_p, int priv_n, uint8_t *fp_p, int fp_n);
+
+/**
+ * \brief Write profile contents from submodule buffer to SD card
+ * \param profile_id Profile number, 1 to MAX_PROFILES
+ * \param pin_p Pointer to PIN buffer
+ * \param pin_n Size of PIN buffer
+ * \param priv_p Pointer to privilege buffer
+ * \param priv_n Size of privilege buffer
+ * \param fp_p Pointer to fingerprint buffer
+ * \param fp_n Size of fingerprint buffer
+ * \retval See vfy_pass for description of all possible return values
+ */
+esp_err_t SD_writeProfile(int profile_id, uint8_t *pin_p, int pin_n,
+    uint8_t *priv_p, int priv_n, uint8_t *fp_p, int fp_n);
+
+/**
+ * \brief Delete profile contents in SD card
+ * \param profile_id Profile number, 1 to MAX_PROFILES
+ * \retval See vfy_pass for description of all possible return values
+ */
+esp_err_t SD_deleteProfile(int profile_id);
 
 #endif /* SD_INTERFACE_H_ */

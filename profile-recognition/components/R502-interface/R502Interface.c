@@ -785,9 +785,6 @@ esp_err_t R502_down_char(R502Interface *this, R502_data_len_t data_len, uint8_t 
     int char_data_length = R502_template_size;
     int packet_num = char_data_length / data_len_i;
 
-    printf("packet_num: %d", packet_num);
-    printf("char_data_length: %d", char_data_length);
-
     int i = 1;
     while (i <= packet_num) {
         // Fill data package
