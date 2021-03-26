@@ -19,19 +19,20 @@
  */
 
 // TEMP: May need to move to its own header
-#define FL_INPUT_READY      0x01
-#define FL_SUCCESS          0x02
+#define FL_INPUT_READY      0x01    // if 0, reject all input entries (finger, ENTER key)
 
-#define FL_FP_0             0x04
-#define FL_FP_1             0x08
-#define FL_FP_01            0x0C
-#define FL_PIN              0x10
-#define FL_PRIVILEGE        0x20
+#define FL_PROFILEID        0x02    // profile id (deleteProfile)
+#define FL_FP_0             0x04    // finger entry 1 (verifyUser, addProfile)
+#define FL_FP_1             0x08    // finger entry 2 (addProfile)
+#define FL_FP_01            0x0C    // both finger entries
+#define FL_PIN              0x10    // PIN entry (verifyUser, addProfile)
+#define FL_PRIVILEGE        0x20    // privilege entry (addProfile)
 
 #define FL_FSM              0xC0
-#define FL_VERIFYUSER       0x40
-#define FL_DELETEPROFILE    0x80
-#define FL_ADDPROFILE       0xC0
+#define FL_IDLESTATE        0x00    // fsm = 0
+#define FL_VERIFYUSER       0x40    // fsm = 1
+#define FL_DELETEPROFILE    0x80    // fsm = 2
+#define FL_ADDPROFILE       0xC0    // fsm = 3
 
 #define MAX_PROFILES 200
 
@@ -110,5 +111,14 @@ esp_err_t addProfile_privilege(uint8_t *flags, uint8_t privilege, uint8_t *ret_c
  * \retval See vfy_pass for description of all possible return values
  */
 esp_err_t addProfile_compile(uint8_t *flags, uint8_t *ret_code);
+
+/**
+ * \brief Compile and save profile to FP module and SD card flash (occurs after PIN, privilege, and fingerprint inserted)
+ * \param flags status flags
+ * \param prof_id input profile id
+ * \param ret_code OUT for the return code
+ * \retval See vfy_pass for description of all possible return values
+ */
+esp_err_t deleteProfile_remove(uint8_t *flags, int prof_id, uint8_t *ret_code);
 
 #endif /* PROF_RECOG_H_ */

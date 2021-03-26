@@ -151,3 +151,68 @@ esp_err_t SD_readProfile(int profile_id, uint8_t *pin_p, int pin_n,
 
     return ESP_OK;
 }
+
+esp_err_t SD_writeProfile(int profile_id, uint8_t *pin_p, int pin_n,
+    uint8_t *priv_p, int priv_n, uint8_t *fp_p, int fp_n) {
+
+    const char* directory = "/sdcard/profiles/";
+    const char* fileName = "profile";
+    const char* fileType = ".bin";
+
+    char name_buffer[512];
+
+    sprintf(name_buffer, "%s%s%d%s", directory, fileName, profile_id, fileType);
+    ESP_LOGI("SD_writeProfile", "Writing to file %s", name_buffer);
+
+    // Open file
+    FILE* f = fopen(name_buffer, "w");
+    if (f == NULL) {
+        ESP_LOGE("SD_writeProfile", "Failed to open file for writing");
+        return ESP_FAIL;
+    }
+
+    // Write 4-byte PIN to file
+    if (fwrite(pin_p, sizeof(uint8_t), pin_n, f) != pin_n) {
+        ESP_LOGE("SD_writeProfile", "PIN not fully written");
+        return ESP_FAIL;
+    }
+
+    // Write 1-byte privilege to file
+    if (fwrite(priv_p, sizeof(uint8_t), priv_n, f) != priv_n) {
+        ESP_LOGE("SD_writeProfile", "Privilege not fully written");
+        return ESP_FAIL;
+    }
+
+    // Write 384x4 (1536) byte fingerprint template to file
+    if (fwrite(fp_p, sizeof(uint8_t), fp_n, f) != fp_n) {
+        ESP_LOGE("SD_writeProfile", "Fingerprint not fully written");
+        return ESP_FAIL;
+    }
+
+    fclose(f);
+
+    return ESP_OK;
+}
+
+esp_err_t SD_deleteProfile(int profile_id) {
+    // Check if destination file exists before renaming
+    struct stat st;
+    const char* directory = "/sdcard/profiles/";
+    const char* fileName = "profile";
+    const char* fileType = ".bin";
+
+    char name_buffer[512];
+
+    sprintf(name_buffer, "%s%s%d%s", directory, fileName, profile_id, fileType);
+    ESP_LOGI("SD_deleteProfile", "Looking for file %s", name_buffer);
+
+    // Check if file exists
+    if (stat(name_buffer, &st) == 0) {
+        // Delete it if it exists
+        unlink(name_buffer);
+    } else {
+        printf("profile %d does not exist\n", profile_id);
+    }
+
+    return ESP_OK;
+}

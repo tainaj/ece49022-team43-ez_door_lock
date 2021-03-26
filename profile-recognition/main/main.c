@@ -25,9 +25,9 @@
  * ----------------------------------------------------------------------
  */
 
+//typedef int project_mode_t;
 
-bool isAdmin; // currently in admin mode (from successin verifying admin PIN/FP)
-bool accessAdmin; // currently seeking admin mode (by pressing admin query button)
+int accessAdmin; // currently seeking admin mode (by pressing admin query button)
 uint8_t flags = 0; // used to track inputs
 
 // ------TEST ONLY-------------
@@ -37,7 +37,8 @@ uint8_t pin1[4] = {1, 2, 3, 4}; // default admin
 uint8_t pin2[4] = {5, 6, 7, 8}; // invalid
 uint8_t pin3[4] = {1, 2, 4, 8}; // invalid
 uint8_t *pinEnter = pin1;
-uint8_t privEnter = 1;          // user-type
+uint8_t privEnter = 0;          // user-type
+int profileIdEnter = 2;
 
 // --------------END TEST-----------------
 
@@ -80,11 +81,26 @@ static void gpio_task_example(void* arg)
                     if (!is_pressed) {
                         break;
                     }
-                    accessAdmin = !accessAdmin;
-                    if (accessAdmin) {
-                        printf("Entering admin verification\n");
-                    } else {
-                        printf("Leaving admin verification\n");
+                    //accessAdmin = !accessAdmin;
+
+                    if ((flags & FL_FSM) == FL_IDLESTATE) {
+                        accessAdmin = (accessAdmin+1) % 3;
+                        if (accessAdmin == 1) {
+                            printf("Add profile. Press ENTER to start\n");
+                        } else if (accessAdmin == 2) {
+                            printf("Delete profile. Press ENTER to start\n");
+                        } else if (accessAdmin == 0) {
+                            printf("Exit admin mode. Press ENTER to start\n");
+                        }
+                    }
+                    else if ((flags & FL_FSM) == FL_VERIFYUSER) {
+                        accessAdmin = (accessAdmin+1) % 2;
+                        //accessAdmin = !accessAdmin;
+                        if (accessAdmin == 1) {
+                            printf("Entering admin verification\n");
+                        } else if (accessAdmin == 0){
+                            printf("Leaving admin verification\n");
+                        }
                     }
                     break;
 
@@ -92,8 +108,25 @@ static void gpio_task_example(void* arg)
                     if (!is_pressed) {
                         break;
                     }
-
-                    if ((flags & FL_FSM) == FL_VERIFYUSER) {
+                    if ((flags & FL_FSM) == FL_IDLESTATE) {
+                        if (accessAdmin == 1) {
+                            flags = FL_ADDPROFILE | FL_PRIVILEGE | FL_PIN | FL_FP_01 | FL_INPUT_READY;
+                            printf("Starting Add Profile...\n");
+                            vTaskDelay(1000 / portTICK_PERIOD_MS); // 1 second delay: need time to read the print statement
+                            printf("Enter PIN...\n");
+                        } else if (accessAdmin == 2) {
+                            flags = FL_DELETEPROFILE | FL_PROFILEID | FL_INPUT_READY;
+                            printf("Starting Delete Profile...\n");
+                            vTaskDelay(1000 / portTICK_PERIOD_MS); // 1 second delay: need time to read the print statement
+                            printf("Enter profile id...\n");    
+                        } else if (accessAdmin == 0) {
+                            flags |= FL_VERIFYUSER | FL_PIN | FL_FP_0 | FL_INPUT_READY;
+                            printf("Leaving admin control...\n");
+                            vTaskDelay(1000 / portTICK_PERIOD_MS); // 1 second delay: need time to read the print statement
+                            printf("Reset to Verify User\n");
+                        }
+                    }
+                    else if ((flags & FL_FSM) == FL_VERIFYUSER) {
                         // Echo PIN entered
                         for (int i = 0; i < 4; i++) {
                             printf("%d ", pinEnter[i]);
@@ -107,35 +140,60 @@ static void gpio_task_example(void* arg)
                         if (accessAdmin) {
                             if (privilege) {
                                 printf("Accessing admin...\n");
-                                isAdmin = 1;
                                 // TEST ONLY
-                                flags = FL_ADDPROFILE | FL_PRIVILEGE | FL_PIN | FL_FP_01 | FL_INPUT_READY;
+                                flags = FL_IDLESTATE | FL_INPUT_READY;
+                                //flags = FL_ADDPROFILE | FL_PRIVILEGE | FL_PIN | FL_FP_01 | FL_INPUT_READY;
                                 // AND TEST
                             } else {
                                 printf("Sorry, not admin\n");
+                                flags |= FL_VERIFYUSER | FL_PIN | FL_FP_0 | FL_INPUT_READY;
                             }
                         } else {
                             printf("Hello there, opening door\n");
+                            vTaskDelay(1000 / portTICK_PERIOD_MS); // 1 second delay: need time to read the print statement
+                            printf("Closing door\n");
+
+                            flags |= FL_VERIFYUSER | FL_PIN | FL_FP_0 | FL_INPUT_READY;
                         }
                     }
                     else if ((flags & FL_FSM) == FL_ADDPROFILE) {
                         if (flags & FL_PIN) {
-                            pinEnter = pin3;
+                            pinEnter = pin2; // TEST ONLY
                             addProfile_PIN(&flags, pinEnter, &ret_code);
+                            if (ret_code == 0) {
+                                printf("Enter privilege level...\n");
+                            }
                         }
                         else if (flags & FL_PRIVILEGE) {
                             addProfile_privilege(&flags, privEnter, &ret_code);
+                            printf("PIN and privilege completed.\n");
+                            if ((flags & FL_FP_01) == 0) {
+                                printf("Fingerprint completed. Press ENTER to complete Add Profile\n");
+                            } else {
+                                printf("Awaiting fingerprint...\n");
+                            }
                         }
                         else if (flags & FL_FP_01) {
-                            printf("PIN and privilege completed. Awaiting fingerprint.\n");
+                            printf("No fingerprint loaded. Awaiting fingerprint...\n");
                         }
                         else {
                             printf("PIN, privilege, fingerprint completed. Creating profile...\n");
                             addProfile_compile(&flags, &ret_code);
+
+                            flags = FL_IDLESTATE | FL_INPUT_READY;
                         }
                         /*if (ret_code != 0x0) {
                             break;
                         }*/
+                    }
+                    else if ((flags & FL_FSM) == FL_DELETEPROFILE) {
+                        if (flags & FL_PROFILEID) {
+                            //profileEnter = 
+                            deleteProfile_remove(&flags, profileIdEnter, &ret_code);
+                            if (ret_code == 0) {
+                                printf("profile deleted!\n");
+                            }
+                        }
                     }
                     break;
                 case (GPIO_NUM_4) :
@@ -153,23 +211,32 @@ static void gpio_task_example(void* arg)
                         if (accessAdmin) {
                             if (privilege) {
                                 printf("Accessing admin...\n");
-                                isAdmin = 1;
-                                // TEST ONLY
-                                flags = FL_ADDPROFILE | FL_PRIVILEGE | FL_PIN | FL_FP_01 | FL_INPUT_READY;
+                                // TEST ONLY (Idle state)
+                                flags = FL_IDLESTATE | FL_INPUT_READY;
+
+                                //flags = FL_ADDPROFILE | FL_PRIVILEGE | FL_PIN | FL_FP_01 | FL_INPUT_READY;
                                 // AND TEST
                             } else {
                                 printf("Sorry, not admin\n");
-                                flags |= FL_PIN | FL_FP_0;
+                                flags |= FL_VERIFYUSER | FL_PIN | FL_FP_0 | FL_INPUT_READY;
                             }
                         } else {
                             printf("Hello there, opening door\n");
+
+                            vTaskDelay(1000 / portTICK_PERIOD_MS); // 1 second delay: need time to read the print statement
+                            printf("Closing door\n");
+
+                            flags |= FL_VERIFYUSER | FL_PIN | FL_FP_0 | FL_INPUT_READY;
                         }
                     }
                     else if ((flags & FL_FSM) == FL_ADDPROFILE) {
                         addProfile_fingerprint(&flags, &ret_code);
-                    }
-                    else {
-                        printf("unknown state\n");
+                        if (ret_code != 0) {
+                            break;
+                        }
+                        if ((flags & (FL_PRIVILEGE | FL_PIN | FL_FP_01)) == 0) {
+                            printf("PIN, privilege, fingerprint completed. Press ENTER to complete ADD Profile\n");
+                        }
                     }
 
                     break;
@@ -212,7 +279,6 @@ void app_main(void)
 
     // 6: start at VerifyUser (FSM = 01). Start in Open Door mode (isAdmin = 0)
     flags |= FL_VERIFYUSER | FL_PIN | FL_FP_0 | FL_INPUT_READY;
-    isAdmin = 0;
 
     // inf: await the push buttons (in gpio_task_example thread)
     if (esp_task_wdt_delete(NULL) != ESP_OK) {

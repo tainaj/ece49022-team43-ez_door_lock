@@ -19,6 +19,9 @@
  * --------------------------------------------------------------------------
  */
 
+// configure defs
+#define TEST_SHOW_BUFFER 2 // 0 = nothing; 1 = PIN; 2 = PIN, priv; 3 = PIN, priv; FP
+
 // User profile buffers
 static uint8_t fingerprintBuffer[R502_TEMPLATE_SIZE];    // temp storage for fingerprint template (addProfile, init)
 static uint8_t pinBuffer[4];           // temp storage for PIN (addProfile)
@@ -61,16 +64,20 @@ R502Interface R502 = {
 
 static void print_buffer() {
     // a) PIN
+#if TEST_SHOW_BUFFER >= 1
     printf("PIN: ");
     for (int i = 0; i < 4; i++) {
         printf("%d ", pinBuffer[i]);
     }
     printf("\n");
-
+#endif
+#if TEST_SHOW_BUFFER >= 2
     // b) privilege
     printf("Privilege: %d\n", (int)privBuffer);
 
     // c) char template (fingerprint)
+#endif
+#if TEST_SHOW_BUFFER >= 3
     printf("Template hex: \n");
     uint8_t *data = &fingerprintBuffer[0];
     int box_width = 16;
@@ -91,6 +98,7 @@ static void print_buffer() {
         data_left -= package_size;
         data = data + package_size;
     }
+#endif
 }
 
 // private functions
@@ -132,6 +140,8 @@ void up_char_callback(uint8_t data[R502_max_data_len],
 
 // public functions
 esp_err_t profileRecog_init() {
+    // 1: Initiate R503 module and code
+    ESP_LOGI("profileRecog_init", "Initializing R503...");
     R502_init(&R502, UART_NUM_1, PIN_TXD, PIN_RXD, PIN_IRQ, R502_baud_115200);
 
     R502_read_sys_para(&R502, &conf_code, &sys_para);
@@ -150,15 +160,14 @@ esp_err_t profileRecog_init() {
         return ESP_FAIL;
     }
 
+    // 2: Initiate SD card and code
+    ESP_LOGI("profileRecog_init", "Initializing profiles from SD card...");
+
     // Import each file from SD "/sdcard/profiles/profile%d.bin"
     // Update the profile slot that is open...
-    printf("SD card needed to progress forward\n");
-
-    int i = 1;
     const int count = 200;
-
     for (int i = 0; i < count; i++) {
-        // NEW
+        // Read profile from SD card to buffers
         esp_err_t err = SD_readProfile(i, pinBuffer, 4, &privBuffer, 1, fingerprintBuffer, R502_TEMPLATE_SIZE);
         if (err == ESP_ERR_NOT_FOUND) {
             continue;
@@ -169,28 +178,23 @@ esp_err_t profileRecog_init() {
         // Print buffers
         print_buffer();
 
-        // Download template to buffers (ESP32: PIN, priv; R503: fingerprint)
-        printf("Downloading template into main buffers...\n");
-
+        // Load from buffers (ESP32: PIN, priv; R503: fingerprint)
+        ESP_LOGI("profileRecog_init", "Load PIN, privilege to ESP32");
         profiles[i].isUsed = 1;
         profiles[i].privilege = privBuffer;
-        for (int j = 0; j < 3; j++) {
+        for (int j = 0; j < 4; j++) {
             profiles[i].PIN[j] = pinBuffer[j];
         }
-        
-        ESP_LOGI("profileRecog_init", "Profile slot to init: %d", i);
 
-        // 5: Action: downChar(). Will upload template to ESP32 char buffer
-        printf("Downloading char file from ESP32\n");
+        // Action: downChar(). Will upload template to ESP32 char buffer
+        ESP_LOGI("profileRecog_init", "Load fingerprint file to R503");
 
         R502_down_char(&R502, starting_data_len, 1, fingerprintBuffer, &conf_code);
-        ESP_LOGI("main", "downChar res: %d", (int)conf_code);
+        ESP_LOGI("profileRecog_init", "downChar res: %d", (int)conf_code);
         if (conf_code != R502_ok) {
             ESP_LOGE("profileRecog_init", "Failed to download template");
             return ESP_FAIL;
         }
-
-        //vTaskDelay(1000 / portTICK_PERIOD_MS);
 
         R502_store(&R502, 1, (uint16_t)i, &conf_code);
         ESP_LOGI("profileRecog_init", "store res: %d", (int)conf_code);
@@ -199,7 +203,7 @@ esp_err_t profileRecog_init() {
             return ESP_FAIL;
         }
 
-        ESP_LOGI("profileRecog_init", "Successful R502 import");
+        ESP_LOGI("profileRecog_init", "Successful import");
     }
 
     return ESP_OK;
@@ -217,7 +221,7 @@ esp_err_t verifyUser_fingerprint(uint8_t *flags, uint8_t *ret_code, uint8_t *pri
 
         // 4: search up char file against library and return resuit
         R502_search(&R502, 1, 0, 0xffff, &conf_code, &page_id, &match_score);
-        ESP_LOGI("main", "Search res: %d", (int)conf_code);
+        ESP_LOGI("verifyUser_fingerprint", "Search res: %d", (int)conf_code);
         if (conf_code != R502_ok) {
             printf("Access denied\n");
             //flags |= FL_INPUT_READY;
@@ -307,9 +311,10 @@ esp_err_t addProfile_fingerprint(uint8_t *flags, uint8_t *ret_code) {
 
         // 4: Action: RegModel()
         R502_reg_model(&R502, &conf_code);
-        ESP_LOGI("main", "regModel res: %d", (int)conf_code);
+        ESP_LOGI("addProfile_fingerprint", "regModel res: %d", (int)conf_code);
         if (conf_code != R502_ok) {
-            printf("Finger entries do not match\n");
+            printf("Finger entries do not match. Reenter both\n");
+            *flags |= FL_FP_01;
             return ESP_FAIL;
         }
         
@@ -343,13 +348,13 @@ esp_err_t addProfile_PIN(uint8_t *flags, uint8_t *pin_input, uint8_t *ret_code) 
             }
 
             // Profile is there. Start comparing
-            ESP_LOGI("profileRecog", "comparing profile: %d", i);
+            ESP_LOGI("addProfile_PIN", "comparing profile: %d", i);
             isMatch = true;
 
             // Retrieve a PIN from a profile. If mismatch found, end comparison and move on to next one
             for (int j = 0; j < 4; j++) {
                 if (pin_input[j] != profiles[i].PIN[j]) {
-                    printf("mismatch %d and %d\n", pin_input[j], profiles[i].PIN[j]);
+                    ESP_LOGI("addProfile_PIN","mismatch %d and %d\n", pin_input[j], profiles[i].PIN[j]);
                     isMatch = false;
                     break;
                 }
@@ -413,7 +418,7 @@ esp_err_t addProfile_compile(uint8_t *flags, uint8_t *ret_code) {
     ESP_LOGI("addProfile_compile", "Profile slot to fill: %d", page_id);
 
     R502_store(&R502, 1, page_id, &conf_code);
-    ESP_LOGI("main", "store res: %d", (int)conf_code);
+    ESP_LOGI("addProfile_compile", "store res: %d", (int)conf_code);
     if (conf_code != R502_ok) {
         printf("Failed to store\n");
         return ESP_FAIL;
@@ -423,7 +428,7 @@ esp_err_t addProfile_compile(uint8_t *flags, uint8_t *ret_code) {
 
     // 5: Action: UpChar(). Will upload template to ESP32 char buffer
     R502_up_char(&R502, starting_data_len, 1, &conf_code);
-    ESP_LOGI("main", "upChar res: %d", (int)conf_code);
+    ESP_LOGI("addProfile_compile", "upChar res: %d", (int)conf_code);
     if (conf_code != R502_ok) {
         printf("Failed to upload template\n");
         return ESP_FAIL;
@@ -441,42 +446,41 @@ esp_err_t addProfile_compile(uint8_t *flags, uint8_t *ret_code) {
     // Update the profile slot that is open...
     printf("SD card needed to progress forward\n");
 
-    const char* directory = "/sdcard/profiles/";
-    const char* fileName = "profile";
-    const char* fileType = ".bin";
-
-    char name_buffer[512];
-    int i = page_id;
-
-    const int count = 200;
-
-    sprintf(name_buffer, "%s%s%d%s", directory, fileName, i, fileType);
-    printf("%s\n", name_buffer);
-    FILE* f = fopen(name_buffer, "w");
-    if (f == NULL) {
-        ESP_LOGE("main", "Failed to open file for writing");
+    esp_err_t err = SD_writeProfile(page_id, pinBuffer, 4, &privBuffer, 1, fingerprintBuffer, R502_TEMPLATE_SIZE);
+    if (err != ESP_OK) {
         return ESP_FAIL;
     }
 
-    // Write 4-byte PIN to file
-    if (fwrite(pinBuffer, sizeof(uint8_t), 4, f) != 4) {
-        ESP_LOGE("profileRecog_init", "PIN not fully written");
-        return ESP_FAIL;
+    profiles[page_id].isUsed = 1;
+    profiles[page_id].privilege = privBuffer;
+    for (int j = 0; j < 4; j++) {
+        profiles[page_id].PIN[j] = pinBuffer[j];
     }
 
-    // Write 1-byte privilege to file
-    if (fwrite(&privBuffer, sizeof(uint8_t), 1, f) != 1) {
-        ESP_LOGE("profileRecog_init", "Privilege not fully written");
-        return ESP_FAIL;
-    }
+    return ESP_OK;
+}
 
-    // Write 384x4 (1536) byte fingerprint template to file
-    if (fwrite(fingerprintBuffer, sizeof(uint8_t), R502_TEMPLATE_SIZE, f) != R502_TEMPLATE_SIZE) {
-        ESP_LOGE("profileRecog_init", "Fingerprint not fully written");
-        return ESP_FAIL;
-    }
+esp_err_t deleteProfile_remove(uint8_t *flags, int prof_id, uint8_t *ret_code) {
+    *ret_code = 1;
 
-    fclose(f);
+    if (*flags & (FL_PROFILEID)) {
+        // 1: delete fingerprint template in R503
+        R502_delet_char(&R502, prof_id, 1, &conf_code);
+        ESP_LOGI("deleteProfile_remove", "DeletChar res: %d", (int)conf_code);
+        if (conf_code != R502_ok) {
+            printf("Failed to delete fingerprint from R503\n");
+            return ESP_FAIL;
+        }
+        // 2: delete profile entry in SD card
+        SD_deleteProfile(prof_id);
+
+        // 3: clear entry on buffers
+        profiles[prof_id].isUsed = 0;
+
+        // 4: reset 
+        *ret_code = 0;
+        *flags = FL_IDLESTATE | FL_INPUT_READY;
+    }
 
     return ESP_OK;
 }
