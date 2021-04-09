@@ -45,6 +45,11 @@ typedef struct profile_t {
     uint8_t privilege;
 } profile_t; // index of array = position
 
+/**
+ * @brief externally defined CFAL1602 struct, defined in main
+ */
+//extern CFAL1602Interface CFAL1602;
+
 // END TEMP
 
 #define PIN_TXD  (GPIO_NUM_17)

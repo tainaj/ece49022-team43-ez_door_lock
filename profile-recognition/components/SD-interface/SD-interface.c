@@ -70,6 +70,7 @@ void SD_init(void)
 
     // This initializes the slot without card detect (CD) and write protect (WP) signals.
     // Modify slot_config.gpio_cd and slot_config.gpio_wp if your board has these signals.
+    // Note: Uses HSPI port
     sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
     slot_config.gpio_cs = PIN_NUM_CS;
     slot_config.host_id = host.slot;
@@ -211,7 +212,7 @@ esp_err_t SD_deleteProfile(int profile_id) {
         // Delete it if it exists
         unlink(name_buffer);
     } else {
-        printf("profile %d does not exist\n", profile_id);
+        ESP_LOGE("SD_deleteProfile", "profile %d does not exist", profile_id);
     }
 
     return ESP_OK;

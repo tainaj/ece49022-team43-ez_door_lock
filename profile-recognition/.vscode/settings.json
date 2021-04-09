@@ -16,8 +16,10 @@
     "streambuf": "c",
     "functional": "c",
     "*.ipp": "c",
-    "esp_spi_flash.h": "c"
+    "esp_spi_flash.h": "c",
+    "spi_master.h": "c"
   },
   "idf.portWin": "COM4",
-  "idf.flashType": "UART"
+  "idf.flashType": "UART",
+  "cmake.configureOnOpen": false
 }
