@@ -14,6 +14,8 @@
 
 #include "main.h"
 
+#include "CFAL1602.h" // NEW PRIV_REQUIRE
+
 /** --------------------------------------------------------------------
  * SUBSYSTEM    : main
  * Author       : Joel Taina
@@ -42,7 +44,24 @@ int profileIdEnter = 2;
 
 // --------------END TEST-----------------
 
+// NEW: CFAL1602
 
+#ifdef CONFIG_IDF_TARGET_ESP32
+
+#define CFAL1602_MISO -1
+#define CFAL1602_MOSI 15
+#define CFAL1602_CLK  14
+#define CFAL1602_CS   13
+#endif
+
+// CFAL1602 this object
+CFAL1602Interface CFAL1602 = {
+    .TAG = "CFAL1602C-PB",
+    .initialized = false,
+    .line_len = 16,
+    .line_count = 2,
+    .timer_period = 1000000
+};
 
 // gpio event queue: all interrupts lead here
 xQueueHandle gpio_evt_queue = NULL;
@@ -260,6 +279,11 @@ void app_main(void)
     // 2: create a queue to handle gpio events from isr
     gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
     xTaskCreate(gpio_task_example, "gpio_task_example", 4096, NULL, 10, NULL);
+
+    // NEW: initialize CFAL1602!
+    WS2_init(&CFAL1602, CFAL1602_MISO, CFAL1602_MOSI, CFAL1602_CLK, CFAL1602_CS);
+
+    WS2_msg_print(&CFAL1602, message1, 0, false);
 
     // 3: Init profile recognition
     profileRecog_init();

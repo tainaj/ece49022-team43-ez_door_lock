@@ -1,5 +1,10 @@
 #include "prof-recog.h"
 
+// NEW
+#include "CFAL1602.h" // NEW: PRIV_REQUIRES
+extern CFAL1602Interface CFAL1602;
+
+
 /** --------------------------------------------------------------------------
  * SUBSYSTEM    : profileRecog
  * Author       : Joel Taina
@@ -214,6 +219,9 @@ esp_err_t verifyUser_fingerprint(uint8_t *flags, uint8_t *ret_code, uint8_t *pri
     if (*flags & FL_FP_0) {
 
         printf("Scanning fingerprint...\n");
+
+        WS2_msg_print(&CFAL1602, message2, 1, false);
+
         if (genImg_Img2Tz(1) != ESP_OK) {
             printf("Bad fingerprint entry\n");
             return ESP_FAIL;
@@ -224,6 +232,7 @@ esp_err_t verifyUser_fingerprint(uint8_t *flags, uint8_t *ret_code, uint8_t *pri
         ESP_LOGI("verifyUser_fingerprint", "Search res: %d", (int)conf_code);
         if (conf_code != R502_ok) {
             printf("Access denied\n");
+            WS2_msg_clear(&CFAL1602, 1);
             //flags |= FL_INPUT_READY;
             return ESP_FAIL;
         }
@@ -232,6 +241,8 @@ esp_err_t verifyUser_fingerprint(uint8_t *flags, uint8_t *ret_code, uint8_t *pri
         *privilege = profiles[page_id].privilege;
         printf("Accepted: %d\n", page_id);
     }
+
+    WS2_msg_clear(&CFAL1602, 1);
 
     return ESP_OK;
 }
