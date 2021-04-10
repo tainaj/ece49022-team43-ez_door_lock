@@ -77,10 +77,10 @@ GPIO25     |   COL1  | Output
 GPIO26     |   COL2  | Output
 GPIO27     |   COL3  | Output
 GPIO33     |   COL4  | Output
-GPIO34     |   ROW1  | Input
-GPIO35     |   ROW2  | Input
-GPIO36     |   ROW3  | Input
-GPIO39     |   ROW4  | Input
+GPIO34     |   ROW1  | Input, 10k pullup
+GPIO35     |   ROW2  | Input, 10k pullup
+GPIO36     |   ROW3  | Input, 10k pullup
+GPIO39     |   ROW4  | Input, 10k pullup
 
 
 ESP32 development boards need to be connected to the Relay and Push Button as follows:
