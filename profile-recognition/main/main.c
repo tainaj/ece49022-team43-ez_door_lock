@@ -17,7 +17,7 @@
 #include "CFAL1602.h" // NEW PRIV_REQUIRE
 
 // NEW
-//#include "Keypad.h" // NEW PRIV_REQUIRE
+#include "Keypad.h" // NEW PRIV_REQUIRE
 
 /** --------------------------------------------------------------------
  * SUBSYSTEM    : main
@@ -48,7 +48,7 @@ int profileIdEnter = 2;
 // --------------END TEST-----------------
 
 // NEW: Keypad
-/*#define ROWS 4
+#define ROWS 4
 #define COLS 4
 
 char keys[ROWS][COLS] = {
@@ -65,7 +65,7 @@ uint8_t colPins[COLS] = {25, 26, 27, 33};
 Keypad keypad;
 
 // Event loop
-static void gpio_keypad_loop(void *arg)
+/*static void gpio_keypad_loop(void *arg)
 {
     for (;;) {
         char key = Keypad_getKey(&keypad);
@@ -340,7 +340,7 @@ void app_main(void)
     WS2_msg_print(&CFAL1602, message1, 0, false);
 
     // NEW: initialize Keypad!
-    //Keypad_init(&keypad, makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+    Keypad_init(&keypad, makeKeymap(keys), rowPins, colPins, ROWS, COLS);
     //xTaskCreate(gpio_keypad_loop, "gpio_keypad_loop", 1024, NULL, 10, NULL);
     // SKIP BOTTOM UNTIL ABOVE WORK SUCCESSFULLY!
 
