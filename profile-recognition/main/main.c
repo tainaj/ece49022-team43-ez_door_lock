@@ -16,6 +16,9 @@
 
 #include "CFAL1602.h" // NEW PRIV_REQUIRE
 
+// NEW
+//#include "Keypad.h" // NEW PRIV_REQUIRE
+
 /** --------------------------------------------------------------------
  * SUBSYSTEM    : main
  * Author       : Joel Taina
@@ -44,6 +47,39 @@ int profileIdEnter = 2;
 
 // --------------END TEST-----------------
 
+// NEW: Keypad
+/*#define ROWS 4
+#define COLS 4
+
+char keys[ROWS][COLS] = {
+    {'1','2','3','A'},
+    {'4','5','6','B'},
+    {'7','8','9','C'},
+    {'*','0','#','D'}
+};
+
+uint8_t rowPins[ROWS] = {34, 35, 36, 39};
+uint8_t colPins[COLS] = {25, 26, 27, 33};
+
+// The Keypad object
+Keypad keypad;
+
+// Event loop
+static void gpio_keypad_loop(void *arg)
+{
+    for (;;) {
+        char key = Keypad_getKey(&keypad);
+        if (key != '\0') {
+            printf("hi char %c\n", key);
+        }
+        if (key == '*') {
+            printf("asterisk\n");
+        } else if (key == '#') {
+            printf("hashtag\n");
+        }
+    }
+}*/
+
 // NEW: CFAL1602
 
 #ifdef CONFIG_IDF_TARGET_ESP32
@@ -53,6 +89,9 @@ int profileIdEnter = 2;
 #define CFAL1602_CLK  14
 #define CFAL1602_CS   13
 #endif
+
+//#define PUSH_BUTTON 22 // input
+//#define RELAY       21 // output
 
 // CFAL1602 this object
 CFAL1602Interface CFAL1602 = {
@@ -72,6 +111,21 @@ void IRAM_ATTR gpio_isr_handler(void* arg)
     xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
 }
 
+// Event loop
+/*static void gpio_keypad_loop(void *arg)
+{
+    for (;;) {
+        char key = Keypad_getKey(&keypad);
+        if (key != '\0') {
+            printf("hi char %c\n", key);
+        }
+        if (key == '*') {
+            printf("asterisk\n");
+        } else if (key == '#') {
+            printf("hashtag\n");
+        }
+    }
+}*/
 
 // gpio_task_example: event handler for all gpio-related events
 // Includes: fingerprint entry, PIN entry
@@ -278,13 +332,19 @@ void app_main(void)
 
     // 2: create a queue to handle gpio events from isr
     gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
-    xTaskCreate(gpio_task_example, "gpio_task_example", 4096, NULL, 10, NULL);
+    xTaskCreate(gpio_task_example, "gpio_task_example", 4096, NULL, 12, NULL);
 
     // NEW: initialize CFAL1602!
     WS2_init(&CFAL1602, CFAL1602_MISO, CFAL1602_MOSI, CFAL1602_CLK, CFAL1602_CS);
 
     WS2_msg_print(&CFAL1602, message1, 0, false);
 
+    // NEW: initialize Keypad!
+    //Keypad_init(&keypad, makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+    //xTaskCreate(gpio_keypad_loop, "gpio_keypad_loop", 1024, NULL, 10, NULL);
+    // SKIP BOTTOM UNTIL ABOVE WORK SUCCESSFULLY!
+
+    
     // 3: Init profile recognition
     profileRecog_init();
 
