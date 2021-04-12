@@ -112,7 +112,7 @@ void IRAM_ATTR gpio_isr_handler(void* arg)
 }
 
 // Event loop
-/*static void gpio_keypad_loop(void *arg)
+static void gpio_keypad_loop(void *arg)
 {
     for (;;) {
         char key = Keypad_getKey(&keypad);
@@ -124,8 +124,10 @@ void IRAM_ATTR gpio_isr_handler(void* arg)
         } else if (key == '#') {
             printf("hashtag\n");
         }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+        esp_task_wdt_reset();
     }
-}*/
+}
 
 // gpio_task_example: event handler for all gpio-related events
 // Includes: fingerprint entry, PIN entry
@@ -341,9 +343,13 @@ void app_main(void)
 
     // NEW: initialize Keypad!
     Keypad_init(&keypad, makeKeymap(keys), rowPins, colPins, ROWS, COLS);
-    //xTaskCreate(gpio_keypad_loop, "gpio_keypad_loop", 1024, NULL, 10, NULL);
+    xTaskCreate(gpio_keypad_loop, "gpio_keypad_loop", 1024, NULL, 10, NULL);
     // SKIP BOTTOM UNTIL ABOVE WORK SUCCESSFULLY!
 
+
+    // TEST: Wathcog stuff
+    vTaskDelay();
+    (unsigned long) (esp_timer_get_time() / 1000ULL)
     
     // 3: Init profile recognition
     profileRecog_init();
