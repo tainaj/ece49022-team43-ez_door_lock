@@ -218,12 +218,20 @@ esp_err_t verifyUser_fingerprint(uint8_t *flags, uint8_t *ret_code, uint8_t *pri
     *ret_code = 1;
     if (*flags & FL_FP_0) {
 
+        WS2_msg_print(&CFAL1602, scanning, 0, false);
+        WS2_msg_clear(&CFAL1602, 1);
         printf("Scanning fingerprint...\n");
 
-        WS2_msg_print(&CFAL1602, message2, 1, false);
-
         if (genImg_Img2Tz(1) != ESP_OK) {
+            WS2_msg_print(&CFAL1602, bad_fingerprint_entry_0, 0, false);
+            WS2_msg_print(&CFAL1602, bad_fingerprint_entry_1, 1, false);
             printf("Bad fingerprint entry\n");
+
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+            WS2_msg_clear(&CFAL1602, 0);
+            WS2_msg_clear(&CFAL1602, 1);
+
             return ESP_FAIL;
         }
 
@@ -231,18 +239,26 @@ esp_err_t verifyUser_fingerprint(uint8_t *flags, uint8_t *ret_code, uint8_t *pri
         R502_search(&R502, 1, 0, 0xffff, &conf_code, &page_id, &match_score);
         ESP_LOGI("verifyUser_fingerprint", "Search res: %d", (int)conf_code);
         if (conf_code != R502_ok) {
+            WS2_msg_print(&CFAL1602, access_denied, 0, false);
             printf("Access denied\n");
-            WS2_msg_clear(&CFAL1602, 1);
+
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+            WS2_msg_clear(&CFAL1602, 0);
             //flags |= FL_INPUT_READY;
             return ESP_FAIL;
         }
         *flags &= ~(FL_PIN | FL_FP_0);
         *ret_code = 0; // 0 = SUCCESS
         *privilege = profiles[page_id].privilege;
-        printf("Accepted: %d\n", page_id);
+
+        printf("Access granted: %d\n", page_id); // leave text on until door is closed
+        WS2_msg_print(&CFAL1602, access_granted, 0, false);
+
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 
-    WS2_msg_clear(&CFAL1602, 1);
+    //WS2_msg_clear(&CFAL1602, 1);
 
     return ESP_OK;
 }
@@ -253,8 +269,13 @@ esp_err_t verifyUser_PIN(uint8_t *flags, uint8_t *pin_input, uint8_t *ret_code, 
     *ret_code = 1;
     if (*flags & FL_PIN) {
 
-        // 1: Wait for fingerprint. When received, wait for 500ms.
+        // 1: Wait 0ms.
+        
+        //WS2_msg_print(&CFAL1602, checking_pin, 0, false);
+        WS2_msg_clear(&CFAL1602, 0);
+        WS2_msg_clear(&CFAL1602, 1);
         printf("Checking PIN\n");
+
         vTaskDelay(20 / portTICK_PERIOD_MS);
                         
 
@@ -279,15 +300,24 @@ esp_err_t verifyUser_PIN(uint8_t *flags, uint8_t *pin_input, uint8_t *ret_code, 
             }
 
             if (isMatch) {
+                WS2_msg_print(&CFAL1602, access_granted, 0, false);
                 printf("Accepted PIN from index %d\n", i);
                 ESP_LOGI("verifyUser_PIN", "Privilege level: %d\n", profiles[i].privilege);
+                
+                vTaskDelay(500 / portTICK_PERIOD_MS);
+
                 *flags &= ~(FL_PIN | FL_FP_0);
                 *ret_code = 0; // 0 = SUCCESS
                 *privilege = profiles[i].privilege;
                 return ESP_OK;
             }
         }
+        WS2_msg_print(&CFAL1602, access_denied, 0, false);
         printf("Invalid PIN\n");
+
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+        WS2_msg_clear(&CFAL1602, 0);
         *ret_code = 1; // 1 = FAIL
         return ESP_FAIL;
     }

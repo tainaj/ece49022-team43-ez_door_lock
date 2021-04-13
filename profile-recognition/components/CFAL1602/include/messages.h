@@ -13,6 +13,9 @@
 #define MESSAGES_H_
 
 // Example text messages
+DRAM_ATTR static const char* initializing_0 =
+    "Initializing... ";
+
 DRAM_ATTR static const char* message1 =
     "This is a long  "
     "statement.      "
@@ -33,7 +36,10 @@ DRAM_ATTR static const char* welcome =
     "Welcome, weary traveller!                ";
 
 DRAM_ATTR static const char* enter_pin =
-    "PIN. Press # to ENTER.     ";
+    "PIN: Press for.."
+    "PIN: #     ENTER"
+    "PIN: * backspace"
+    "PIN: A     admin";
 
 DRAM_ATTR static const char* pin_too_small =
     "Invalid PIN:    "
@@ -41,5 +47,26 @@ DRAM_ATTR static const char* pin_too_small =
 
 DRAM_ATTR static const char* pin_entered =
     "PIN entered...";
+
+DRAM_ATTR static const char* scanning =
+    "Scanning...";
+
+DRAM_ATTR static const char* bad_fingerprint_entry_0 =
+    "Bad fingerprint";
+
+DRAM_ATTR static const char* bad_fingerprint_entry_1 =
+    "entry";
+
+DRAM_ATTR static const char* access_denied =
+    "Access denied";
+
+DRAM_ATTR static const char* access_granted =
+    "Access granted";
+
+DRAM_ATTR static const char* door_open =
+    "Door open";
+
+DRAM_ATTR static const char* checking_pin =
+    "Checking PIN...";
 
 #endif /* MESSAGES_H */
