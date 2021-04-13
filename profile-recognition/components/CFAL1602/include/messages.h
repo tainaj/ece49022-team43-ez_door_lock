@@ -19,7 +19,7 @@ DRAM_ATTR static const char* message1 =
     "Please feel free"
     "to edit. No     "
     "chance.         "
-    "JK not dead";
+    "JK not dead"; // use block
 
 DRAM_ATTR static const char* message2 = 
     "Space-time!";
@@ -27,5 +27,19 @@ DRAM_ATTR static const char* message2 =
 DRAM_ATTR static const char* message3 =
     "I have a bad feeling about this. "
     "Shut up, Obi-Wan.      ";
+
+// Verify User messages
+DRAM_ATTR static const char* welcome =
+    "Welcome, weary traveller!                ";
+
+DRAM_ATTR static const char* enter_pin =
+    "PIN. Press # to ENTER.     ";
+
+DRAM_ATTR static const char* pin_too_small =
+    "Invalid PIN:    "
+    "Must be 4 chars."; // use block
+
+DRAM_ATTR static const char* pin_entered =
+    "PIN entered...";
 
 #endif /* MESSAGES_H */

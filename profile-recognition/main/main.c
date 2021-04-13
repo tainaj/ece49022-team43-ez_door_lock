@@ -33,7 +33,7 @@
 //typedef int project_mode_t;
 
 int accessAdmin; // currently seeking admin mode (by pressing admin query button)
-uint8_t flags = 0; // used to track inputs
+volatile uint8_t flags = 0; // used to track inputs
 
 // ------TEST ONLY-------------
 
@@ -44,6 +44,10 @@ uint8_t pin3[4] = {1, 2, 4, 8}; // invalid
 uint8_t *pinEnter = pin1;
 uint8_t privEnter = 0;          // user-type
 int profileIdEnter = 2;
+
+uint8_t pinTemp[4] = {0}; // NEW:
+char pinChar[17] = {0}; // NEW: message string to print to WS2
+//int pin_idx = 0;
 
 // --------------END TEST-----------------
 
@@ -115,15 +119,69 @@ void IRAM_ATTR gpio_isr_handler(void* arg)
 static void gpio_keypad_loop(void *arg)
 {
     static char key;
+    static int pin_idx = 0;
     for (;;) {
         key = Keypad_getKey(&keypad);
         if (key != '\0') {
-            printf("hi char %c\n", key);
-        }
-        if (key == '*') {
-            printf("asterisk\n");
-        } else if (key == '#') {
-            printf("hashtag\n");
+            printf("key press %c\n", key);
+            printf("Truth: %d\n", (int)((flags & FL_FSM) == FL_VERIFYUSER));
+            if ((flags & FL_FSM) == FL_VERIFYUSER) {
+                switch (key) {
+                    case ('1') : // 0-9
+                    case ('2') :
+                    case ('3') :
+                    case ('4') :
+                    case ('5') :
+                    case ('6') :
+                    case ('7') :
+                    case ('8') :
+                    case ('9') :
+                    case ('0') :
+                        printf("Hello?\n");
+                        if (pin_idx == 0) {
+                            // WS2_print line 0
+                            WS2_msg_print(&CFAL1602, enter_pin, 0, true);
+                        }
+                        if (pin_idx < 4) {
+                            pinChar[pin_idx] = key;
+                            pinTemp[pin_idx] = (int)(key - '0'); // convert char to int
+                            pin_idx++;
+                            printf("(%d) PIN string: %s\n", pin_idx, pinChar);
+                            WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                            // WS2_print line 1
+                        }
+                        //pin_idx++;
+                        break;
+                    case ('*') :
+                        if (pin_idx > 0) {
+                            pin_idx--;
+                            pinChar[pin_idx] = '\0';
+                            WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                            // WS2_print line 1
+
+                        }
+                        break;
+                    case ('#') :
+                        if (pin_idx < 4) {
+                            WS2_msg_print(&CFAL1602, pin_too_small, 1, false);
+                            vTaskDelay(1000 / portTICK_PERIOD_MS);
+                            WS2_msg_print(&CFAL1602, pinChar, 1, true);
+                        } else {
+                            WS2_msg_print(&CFAL1602, pin_entered, 1, false);
+                            vTaskDelay(1000 / portTICK_PERIOD_MS);
+                            do {
+                                pin_idx--;
+                                pinChar[pin_idx] = '\0';
+                            }while (pin_idx > 0);
+                            WS2_msg_clear(&CFAL1602, 1);
+                        }
+                        break;
+                    default :
+                        printf("Not valid character\n");
+                }
+            }
+
+            //printf("hi char %c\n", key);
         }
         //printf("loop1\n");
         vTaskDelay(10 / portTICK_PERIOD_MS);
