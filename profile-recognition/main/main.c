@@ -157,6 +157,31 @@ static void gpio_keypad_loop(void *arg)
                 else if ((flags & FL_FSM) == FL_ADDPROFILE) {
                     // enter PIN digit (only for PIN or PRIV set)
                     // further: 1,2 for PIN or PRIV. 0,3-9 for PIN AND PRIV only. May recommend moving to seperate cases 1 and 2 once integ-things is built
+
+                    // PIN mode: all digits 0-9
+                    if (flags & FL_PIN) {
+                        // do thing
+                        // Update pinChar
+
+                        // Enter digit up to allowed number of chars (4)
+                        if (pin_idx < 4) {
+                            // Print 1: PIN: %%%% (edit pinChar, increment for each digit)
+                            pinCharTemp[pin_idx] = key;
+                            pinEnter[pin_idx] = (int)(key - '0'); // convert char to int
+                            pin_idx++;
+                            WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                        }
+                        // return
+                    }
+                    // PRIV mode: digits 1,2
+                    else if (flags & FL_PRIVILEGE) {
+                        if ((key == '1') || (key == '2')) {
+                            // do thing
+
+
+                            
+                        }
+                    }
                 }
                 // release lock
                 flags |= FL_INPUT_READY;
@@ -185,15 +210,17 @@ static void gpio_keypad_loop(void *arg)
                         pinCharTemp[pin_idx] = '\0';
                         WS2_msg_print(&CFAL1602, pinChar, 1, false);
                     }
+                    // return
                 }
                 else if ((flags & FL_FSM) == FL_ADDPROFILE) {
                     // backspace PIN digit (only for PIN or PRIV set. Technically, it will not affect for all cases.)
-                    /*if (pin_idx > 0) {
+                    if (pin_idx > 0) {
                         pin_idx--;
-                        pinChar[pin_idx] = '\0';
+                        pinCharTemp[pin_idx] = '\0';
                         WS2_msg_print(&CFAL1602, pinChar, 1, false);
                         // WS2_print line 1
-                    }*/
+                    }
+                    // return
                 }
                 else if ((flags & FL_FSM) == FL_DELETEPROFILE) {
                     // reject profile deletion during confirmation (only for PROFILE cleared)
@@ -334,6 +361,94 @@ static void gpio_keypad_loop(void *arg)
                 }
                 else if ((flags & FL_FSM) == FL_ADDPROFILE) {
                     // enter PIN, priv, compile (any time)
+
+                    bool isPinGood = (pin_idx < 4) ? false : true;
+
+                    // PIN mode: submit PIN
+                    if (flags & FL_PIN) {
+                        // Clear PIN display and contents
+                        WS2_msg_clear(&CFAL1602, 1);
+                        for (int i=0; i < 16; i++) {
+                            pinChar[i] = '\0';
+                        }
+                        pin_idx = 0;
+
+                        // case 1: PIN too short
+                        if (!isPinGood) {
+                            // Print 0: Invalid PIN (1 second)
+                            // Print 1: Must be 4 chars (1 second)
+                            WS2_msg_print(&CFAL1602, invalid_pin, 0, false);
+                            WS2_msg_print(&CFAL1602, must_be_4_chars, 1, false);
+                            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                            // NOTE BEGIN: OPTIONAL?
+                            // Print 0: Admin: Add
+                            WS2_msg_print(&CFAL1602, admin_add, 0, false);
+                            // NOTE END
+
+                            // Print 1: PIN (variable). Show PIN prescript
+                            if (pin_idx == 0) {
+                                // Print 1: PIN: (edit pinChar, set pinEnter to +5)
+                                sprintf(pinChar, "%s", "PIN: \0\0\0\0\0\0\0\0\0\0\0");
+                                pinCharTemp = pinChar + 5;
+                                WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                            } else {
+                                ESP_LOGE("me", "bad bad bad");
+                            }
+                            printf("Enter PIN...\n");
+
+                            // return. Still in PIN mode
+                        } 
+                        // case 2: PIN good
+                        else {
+                            // call verifyUser_PIN
+                            addProfile_PIN(&flags, pinEnter, &ret_code);
+
+                            // if retcode == 0
+                            // case 1: PIN already used
+                            if (ret_code != 0x0) {
+                                // NOTE BEGIN: OPTIONAL?
+                                // Print 0: Admin: Add
+                                WS2_msg_print(&CFAL1602, admin_add, 0, false);
+                                // NOTE END
+
+                                // Print 1: PIN (variable). Show PIN prescript
+                                if (pin_idx == 0) {
+                                    // Print 1: PIN: (edit pinChar, set pinEnter to +5)
+                                    sprintf(pinChar, "%s", "PIN: \0\0\0\0\0\0\0\0\0\0\0");
+                                    pinCharTemp = pinChar + 5;
+                                    WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                                } else {
+                                    ESP_LOGE("me", "bad bad bad");
+                                }
+                                printf("Enter PIN...\n");
+
+                                // return. Still in PIN mode
+                            }
+                            // case 2: PIN good for use
+                            else {
+                                // Print 0: PIN good for you (1 second)
+                                WS2_msg_print(&CFAL1602, pin_good_for_use, 0, false);
+                                vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                                // Print 0: Admin Add
+                                WS2_msg_print(&CFAL1602, admin_add, 0, false);
+
+                                // Print 1: Privilege (variable). Show Privilege prescript
+                                if (pin_idx == 0) {
+                                    // Print 1: Privilege: (edit pinChar, set pinEnter to +11)
+                                    sprintf(pinChar, "%s", "Privilege: \0\0\0\0\0");
+                                    pinCharTemp = pinChar + 11;
+                                    WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                                } else {
+                                    ESP_LOGE("me", "bad bad bad");
+                                }
+                                printf("Enter Privilege...\n");
+
+                                // return
+                            }
+                        }
+                    }
 
                     // TEST: comment out the bottom for now
                     /*if (flags & FL_PIN) {

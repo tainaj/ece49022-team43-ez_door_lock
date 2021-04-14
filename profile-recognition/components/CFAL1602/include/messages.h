@@ -93,6 +93,12 @@ DRAM_ATTR static const char* return_to_menu_1 =
 DRAM_ATTR static const char* admin_add =
     "Admin: Add";
 
+DRAM_ATTR static const char* pin_already_used =
+    "PIN already used";
+
+DRAM_ATTR static const char* pin_good_for_use =
+    "PIN good for use";
+
 // Delete Profile messages
 DRAM_ATTR static const char* admin_delete =
     "Admin: Delete";

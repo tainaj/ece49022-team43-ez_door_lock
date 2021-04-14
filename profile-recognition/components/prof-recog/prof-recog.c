@@ -366,7 +366,10 @@ esp_err_t addProfile_PIN(uint8_t *flags, uint8_t *pin_input, uint8_t *ret_code) 
     *ret_code = 1;
 
     if (*flags & FL_PIN) {
-        // 1: Wait for PIN entry. When recieved, wait for 500ms. (no reason)
+        // Print 0: 
+        // Print 1: 
+        WS2_msg_clear(&CFAL1602, 0);
+        WS2_msg_clear(&CFAL1602, 1);
         printf("Verifying PIN uniqueness\n");
         vTaskDelay(20 / portTICK_PERIOD_MS);
 
@@ -392,17 +395,25 @@ esp_err_t addProfile_PIN(uint8_t *flags, uint8_t *pin_input, uint8_t *ret_code) 
             }
 
             if (isMatch) {
+                // Print 0: PIN already used
+                WS2_msg_print(&CFAL1602, pin_already_used, 0, false);
                 printf("PIN already being used by profile %d\n", i);
                 printf("Select different PIN\n");
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                // return
                 return ESP_FAIL;
             }
         }
+        // case 2: PIN is good for use
         printf("Accepted PIN ");
         for (int j = 0; j < 4; j++) {
             pinBuffer[j] = pin_input[j];
             printf("%d", (int)pinBuffer[j]);
         }
         printf("\n");
+
+        // clear PIN flag
         *flags &= ~FL_PIN;
         *ret_code = 0; // 0 = SUCCESS
         return ESP_OK;
