@@ -31,7 +31,7 @@
 #define ESP_MAXIMUM_RETRY  5
 
 #define ENABLE_STATIC_IP
-
+ 
 static const char *TAG = "WebServer";
 
 static EventGroupHandle_t s_wifi_event_group;
