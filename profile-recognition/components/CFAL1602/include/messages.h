@@ -84,4 +84,16 @@ DRAM_ATTR static const char* item3 =
 DRAM_ATTR static const char* selected_this =
     "Selected";
 
+// Add Profile messages
+DRAM_ATTR static const char* admin_add =
+    "Admin: Add";
+
+// Delete Profile messages
+DRAM_ATTR static const char* admin_delete =
+    "Admin: Delete";
+
+// Delete Profile messages
+DRAM_ATTR static const char* leaving_admin =
+    "Leaving Admin...";
+
 #endif /* MESSAGES_H */
