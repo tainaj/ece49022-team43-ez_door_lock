@@ -49,4 +49,18 @@ void restore_to_idleState();
  */
 void open_door();
 
+/**
+ * @brief handle all 5 verifyUser outcomes
+ *        $ outcomes: open door, enter admin, bad_fingerprint, denied, sorry not admin
+ *        - case 1: bad fingerprint, denied
+ *          - reset system to verifyUser initial state.
+ *        - case 2: open door, enter admin, sorry not admin
+ *          - case a: enter admin
+ *          - case b: sorry not admin
+ *          - case c: open door
+ *        $ incorporates open_door, restore_to_verifyUser, restore_to_idleState
+ * @return none
+ */
+void verifyUser_outcome_handler();
+
 #endif /* INTEG_THINGS_H_ */

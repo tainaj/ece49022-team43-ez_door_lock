@@ -24,6 +24,9 @@ extern CFAL1602Interface CFAL1602;
 extern int accessAdmin; // currently seeking admin mode (by pressing admin query button)
 extern volatile uint8_t flags; // used to track inputs
 
+extern uint8_t ret_code;
+extern uint8_t privilege;
+
 
 
 // private functions
@@ -88,4 +91,65 @@ void open_door() {
 
     // Toggle GPIO21 off (relay output)
     gpio_set_level((gpio_num_t)RELAY_OUTPUT, 0); // turn off relay (GPIO21)
+}
+
+void verifyUser_outcome_handler() {
+    // case 1: bad fingerprint, denied
+    if (ret_code != 0x0) {
+        // reset system to verifyUser initial state.
+        restore_to_verifyUser();
+    }
+    // case 2: open door, enter admin, sorry not admin
+    else {
+        if (accessAdmin) {
+            // case a: admin access, privileged
+            if (privilege) {
+                // Print 0: Access granted (0.5 seconds)
+                // Print 1:
+                WS2_msg_print(&CFAL1602, access_granted, 0, false);
+                WS2_msg_clear(&CFAL1602, 1);
+                printf("Access granted\n");
+                vTaskDelay(500 / portTICK_PERIOD_MS);
+
+                // Print 0: Entering admin.. (1 second)
+                WS2_msg_print(&CFAL1602, entering_admin, 0, false);
+                printf("Entering admin..\n");
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+                
+                // reset system to idleState initial state.
+                restore_to_idleState();
+
+                // return
+            }
+            // case b: admin access, not privileged
+            else {
+                // Print 0: Access denied (1 second)
+                // Print 1:
+                WS2_msg_print(&CFAL1602, access_denied, 0, false);
+                WS2_msg_clear(&CFAL1602, 1);
+                printf("Sorry, not admin\n");
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                // reset system to verifyUser initial state.
+                restore_to_verifyUser();
+
+                // return
+            }
+        }
+        // case c: door open
+        else {
+            // Print 0: Access granted (0.5 second)
+            // Print 1:
+            WS2_msg_print(&CFAL1602, access_granted, 0, false);
+            WS2_msg_clear(&CFAL1602, 1);
+            printf("Access granted\n");
+            vTaskDelay(500 / portTICK_PERIOD_MS);
+
+            // open door.
+            open_door();
+
+            // reset system to verifyUser initial state
+            restore_to_verifyUser();
+        }
+    }
 }
