@@ -184,7 +184,7 @@ void app_main(void)
     esp_http_client_fetch_headers(client);
     char data_buff[100];
     int read = esp_http_client_read(client, data_buff, 100);
-    printf("THE READ IS %d\n", data_buff);
+    printf("THE READ IS %s\n", data_buff);
 
 
     esp_http_client_close(client);
