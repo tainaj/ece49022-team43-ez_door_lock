@@ -30,7 +30,7 @@ extern "C" {
 
 // Declarations for event source 1: periodic timer
 #define TIMER_EXPIRIES_COUNT        3        // number of times the periodic timer expires before being stopped
-#define TIMER_PERIOD                500000  // period of the timer event source in microseconds
+#define TIMER_PERIOD                250000  // period of the timer event source in microseconds
 
 extern esp_timer_handle_t g_timer;           // the periodic timer object
 
