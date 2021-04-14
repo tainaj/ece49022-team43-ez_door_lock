@@ -335,10 +335,21 @@ void WS2_msg_print(CFAL1602Interface *this, const char* msg, int line, bool isAu
     esp_event_handler_instance_unregister(TIMER_EVENTS, TIMER_EVENT_STARTED, s_instanceS_1);
     s_instanceS_1 = s_instanceS_2;
 
-    ESP_LOGI(TAG, "%s:%s: posting to default loop", TIMER_EVENTS, get_id_string(TIMER_EVENTS, TIMER_EVENT_STARTED));
+    //ESP_LOGI(TAG, "%s:%s: posting to default loop", TIMER_EVENTS, get_id_string(TIMER_EVENTS, TIMER_EVENT_STARTED));
     ESP_ERROR_CHECK(esp_event_post(TIMER_EVENTS, TIMER_EVENT_STARTED, NULL, 0, portMAX_DELAY));
 }
 
 void WS2_msg_clear(CFAL1602Interface *this, int line) {
     WS2_msg_print(this, clear_string, line, false);
+}
+
+char * WS2_get_string(CFAL1602Interface *this, int line) {
+    char * outString = NULL;
+    if ((line == 0) && (line0.isEnabled)) {
+        outString = line0.msg;
+    }
+    if ((line == 1) && (line1.isEnabled)) {
+        outString = line1.msg;
+    }
+    return outString;
 }
