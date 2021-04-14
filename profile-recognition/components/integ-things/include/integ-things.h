@@ -19,6 +19,9 @@
  * subsystem
  */
 
+#define RELAY_OUTPUT 21
+#define DOOR_INPUT 22
+
 /**
  * @brief reset system to verifyUser initial state.
  *        - restore flags to verifyUser init
@@ -36,5 +39,14 @@ void restore_to_verifyUser();
  * @return none
  */
 void restore_to_idleState();
+
+/**
+ * @brief open door.
+ *        - Toggle GPIO21 on (relay output)
+ *        - print "door open"
+ *        - Toggle GPIO21 off (relay output)
+ * @return none
+ */
+void open_door();
 
 #endif /* INTEG_THINGS_H_ */

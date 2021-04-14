@@ -37,8 +37,8 @@ bool doorOpen = false;
 int accessAdmin; // currently seeking admin mode (by pressing admin query button)
 volatile uint8_t flags = 0; // used to track inputs
 
-#define RELAY_OUTPUT 21
-#define DOOR_INPUT 22
+//#define RELAY_OUTPUT 21
+//#define DOOR_INPUT 22
 
 // ------TEST ONLY-------------
 
@@ -384,18 +384,8 @@ static void gpio_keypad_loop(void *arg)
                             printf("Access granted\n");
                             vTaskDelay(500 / portTICK_PERIOD_MS);
 
-                            // Toggle GPIO21 on (relay output)
-                            gpio_set_level((gpio_num_t)RELAY_OUTPUT, 1); // turn on relay (GPIO21)
-
-                            // Print 0: Door open (1 second)
-                            // Print 1: 
-                            WS2_msg_print(&CFAL1602, door_open, 0, false);
-                            WS2_msg_clear(&CFAL1602, 1);
-                            printf("Hello there, opening door\n");
-                            vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-                            // Toggle GPIO21 off (relay output)
-                            gpio_set_level((gpio_num_t)RELAY_OUTPUT, 0); // turn off relay (GPIO21)
+                            // open door.
+                            open_door();
 
                             // reset system to verifyUser initial state
                             restore_to_verifyUser();
@@ -682,28 +672,13 @@ static void gpio_task_example(void* arg)
                             isHelp = false;
                         }
 
-                        // Toggle GPIO21 on (relay output)
-                        gpio_set_level((gpio_num_t)RELAY_OUTPUT, 1); // turn on relay (GPIO21)
+                        // open door.
+                        open_door();
 
-                        // Print 0: Door open (1 second)
-                        // Print 1: 
-                        WS2_msg_print(&CFAL1602, door_open, 0, false);
-                        WS2_msg_clear(&CFAL1602, 1);
-                        printf("Hello there, opening door\n");
-                        vTaskDelay(1000 / portTICK_PERIOD_MS);
+                        // reset system to verifyUser initial state.
+                        restore_to_verifyUser();
 
-                        // Toggle GPIO21 off (relay output)
-                        gpio_set_level((gpio_num_t)RELAY_OUTPUT, 0); // turn off relay (GPIO21)
-
-                        // restore flags to verifyUser init
-                        flags |= FL_VERIFYUSER | FL_PIN | FL_FP_0;
-
-                        // set admin to 0 (door open select)
-                        accessAdmin = 0;
-
-                        // init screen for verifyUser
-                        WS2_msg_clear(&CFAL1602, 0);
-                        WS2_msg_clear(&CFAL1602, 1);
+                        // return
                     }
                     // release lock
                     flags |= FL_INPUT_READY;
@@ -796,18 +771,8 @@ static void gpio_task_example(void* arg)
                             printf("Access granted\n");
                             vTaskDelay(500 / portTICK_PERIOD_MS);
 
-                            // Toggle GPIO21 on (relay output)
-                            gpio_set_level((gpio_num_t)RELAY_OUTPUT, 1); // turn on relay (GPIO21)
-
-                            // Print 0: Door open (1 second)
-                            // Print 1: 
-                            WS2_msg_print(&CFAL1602, door_open, 0, false);
-                            WS2_msg_clear(&CFAL1602, 1);
-                            printf("Hello there, opening door\n");
-                            vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-                            // Toggle GPIO21 off (relay output)
-                            gpio_set_level((gpio_num_t)RELAY_OUTPUT, 0); // turn off relay (GPIO21)
+                            // open door.
+                            open_door();
 
                             // reset system to verifyUser initial state
                             restore_to_verifyUser();

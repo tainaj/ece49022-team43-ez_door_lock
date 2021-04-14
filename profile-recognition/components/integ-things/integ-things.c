@@ -75,3 +75,17 @@ void restore_to_idleState() {
     WS2_msg_print(&CFAL1602, item1, 1, false);
 }
 
+void open_door() {
+    // Toggle GPIO21 on (relay output)
+    gpio_set_level((gpio_num_t)RELAY_OUTPUT, 1); // turn on relay (GPIO21)
+
+    // Print 0: Door open (1 second)
+    // Print 1: 
+    WS2_msg_print(&CFAL1602, door_open, 0, false);
+    WS2_msg_clear(&CFAL1602, 1);
+    printf("Hello there, opening door\n");
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    // Toggle GPIO21 off (relay output)
+    gpio_set_level((gpio_num_t)RELAY_OUTPUT, 0); // turn off relay (GPIO21)
+}
