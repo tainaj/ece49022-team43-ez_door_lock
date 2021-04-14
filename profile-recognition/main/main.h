@@ -2,6 +2,7 @@
 #define MAIN_H_
 
 #include "prof-recog.h"
+#include "integ-things.h"
 //#include "CFAL1602.h"
 
 /**

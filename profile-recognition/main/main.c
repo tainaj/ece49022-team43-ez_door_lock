@@ -28,20 +28,6 @@
  * ----------------------------------------------------------------------
  */
 
-// NEW: help thing
-DRAM_ATTR static const char* help1 =
-    "The purpose is to experience test, "
-    "in the face of certain test, "
-    "to accept that test, "
-    "to maintain control of oneself in one's test."
-    "It is a subroutine expected of every Starfleet captain.    -Spock, [YTP] Spock is Emotionally Compromised";
-
-DRAM_ATTR static const char* help2 =
-    "I have a new hearing aid Emperor. "
-    "Or should I call you, Darth Idiot? "
-    "Or should I call you, Darth Arthur? "
-    "Or should I call you, Darth Darthius? ";
-
 char* help_save1;
 char* help_save2;
 bool isHelp = false;
@@ -232,23 +218,77 @@ static void gpio_keypad_loop(void *arg)
                 if ((flags & FL_FSM) == FL_IDLESTATE) {
                     // select admin control option (any time)
 
-                    // TEST: comment out the bottom for now
-                    /*if (accessAdmin == 1) {
-                        flags = FL_ADDPROFILE | FL_PRIVILEGE | FL_PIN | FL_FP_01 | FL_INPUT_READY;
-                        printf("Starting Add Profile...\n");
-                        vTaskDelay(1000 / portTICK_PERIOD_MS); // 1 second delay: need time to read the print statement
+                    // Print 0: Selected (1 second)
+                    WS2_msg_print(&CFAL1602, selected_this, 0, false);
+                    printf("Starting Add Profile...\n");
+                    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                    if (accessAdmin == 0) {
+                        // case 1: addProfile
+                        // Print 0: Admin: Add
+                        WS2_msg_print(&CFAL1602, admin_add, 0, false);
+
+                        // Print 1: PIN (variable). Show PIN prescript
+                        if (pin_idx == 0) {
+                            // Print 1: PIN: (edit pinChar, set pinEnter to +5)
+                            sprintf(pinChar, "%s", "PIN: \0\0\0\0\0\0\0\0\0\0\0");
+                            pinCharTemp = pinChar + 5;
+                            WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                        } else {
+                            ESP_LOGE("me", "bad bad bad");
+                        }
                         printf("Enter PIN...\n");
-                    } else if (accessAdmin == 2) {
-                        flags = FL_DELETEPROFILE | FL_PROFILEID | FL_INPUT_READY;
+
+                        // Set flags to AddProfile init
+                        flags = FL_ADDPROFILE | FL_PRIVILEGE | FL_PIN | FL_FP_01;
+
+                        // return (to AddProfile)
+                    } else if (accessAdmin == 1) {
+                        // case 2: deleteProfile
+                        // Print 0: Admin: Delete
+                        /*WS2_msg_print(&CFAL1602, admin_delete, 0, false);
+
+                        // Print 1: Profile (variable). Show Profile prescript
+                        if (pin_idx == 0) {
+                            // Print 1: Profile: (edit pinChar, set pinEnter to +5)
+                            sprintf(pinChar, "%s", "Profile: \0\0\0\0\0\0\0");
+                            pinCharTemp = pinChar + 5;
+                            WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                        } else {
+                            ESP_LOGE("me", "bad bad bad");
+                        }
+                        printf("Enter PIN...\n");*/
+
+                        // WORK ON BOTTOM AFTER ADD_PROFILE
+                        // Enter digit up to allowed number of chars (4)
+                        /*if (pin_idx < 4) {
+                            // Print 1: PIN: %%%% (edit pinChar, increment for each digit)
+                            pinCharTemp[pin_idx] = key;
+                            pinEnter[pin_idx] = (int)(key - '0'); // convert char to int
+                            pin_idx++;
+                            WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                        }
+
+
+                        flags = FL_DELETEPROFILE | FL_PROFILEID;
                         printf("Starting Delete Profile...\n");
                         vTaskDelay(1000 / portTICK_PERIOD_MS); // 1 second delay: need time to read the print statement
-                        printf("Enter profile id...\n");    
-                    } else if (accessAdmin == 0) {
-                        flags |= FL_VERIFYUSER | FL_PIN | FL_FP_0 | FL_INPUT_READY;
+                        printf("Enter profile id...\n");*/    
+                    } else if (accessAdmin == 2) {
+                        // case 3: Exit Admin
+                        // Print 0: Leaving Admin... (1 second)
+                        // Print 1: (1 second)
+                        WS2_msg_print(&CFAL1602, leaving_admin, 0, false);
+                        WS2_msg_clear(&CFAL1602, 1);
                         printf("Leaving admin control...\n");
-                        vTaskDelay(1000 / portTICK_PERIOD_MS); // 1 second delay: need time to read the print statement
+                        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                        // reset system to verifyUser initial state
+                        restore_to_verifyUser();
                         printf("Reset to Verify User\n");
-                    }*/
+
+                        // return (verifyUser)
+                    }
                 }
                 else if ((flags & FL_FSM) == FL_VERIFYUSER) {
                     // enter PIN for access (any time)
@@ -335,18 +375,12 @@ static void gpio_keypad_loop(void *arg)
                                 // Print 0: Access denied (1 second)
                                 // Print 1:
                                 WS2_msg_print(&CFAL1602, access_denied, 0, false);
-                                printf("Sorry, not admin\n");
-
-                                // restore flags to verifyUser init
-                                flags = FL_VERIFYUSER | FL_PIN | FL_FP_0;
-
-                                // set admin to 0 (door open select)
-                                accessAdmin = 0;
-                                printf("Leaving admin verification\n");
-
-                                // init screen for verifyUser
-                                WS2_msg_clear(&CFAL1602, 0);
                                 WS2_msg_clear(&CFAL1602, 1);
+                                printf("Sorry, not admin\n");
+                                vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                                // reset system to verifyUser initial state
+                                restore_to_verifyUser();
                             }
                         } else {
                             // case 3: door open
@@ -370,15 +404,8 @@ static void gpio_keypad_loop(void *arg)
                             // Toggle GPIO21 off (relay output)
                             gpio_set_level((gpio_num_t)RELAY_OUTPUT, 0); // turn off relay (GPIO21)
 
-                            // restore flags to verifyUser init
-                            flags = FL_VERIFYUSER | FL_PIN | FL_FP_0;
-
-                            // set admin to 0 (door open select)
-                            accessAdmin = 0;
-
-                            // init screen for verifyUser
-                            WS2_msg_clear(&CFAL1602, 0);
-                            WS2_msg_clear(&CFAL1602, 1);
+                            // reset system to verifyUser initial state
+                            restore_to_verifyUser();
 
                             // return
                         }
@@ -446,16 +473,20 @@ static void gpio_keypad_loop(void *arg)
 
                 if ((flags & FL_FSM) == FL_IDLESTATE) {
                     // toggle next (up) admin control option 0-2 (any time)
-
-                    // TEST: comment out bottom for now
-                    /*accessAdmin = (accessAdmin+1) % 3;
+                    accessAdmin = (accessAdmin+1) % 3;
                     if (accessAdmin == 0) {
+                        // Print 1: Add Profile
+                        WS2_msg_print(&CFAL1602, item1, 1, false);
                         printf("Add profile. Press ENTER to start\n");
                     } else if (accessAdmin == 1) {
+                        // Print 1: Delete Profile
+                        WS2_msg_print(&CFAL1602, item2, 1, false);
                         printf("Delete profile. Press ENTER to start\n");
                     } else if (accessAdmin == 2) {
+                        // Print 1: Exit Admin
+                        WS2_msg_print(&CFAL1602, item3, 1, false);
                         printf("Exit admin mode. Press ENTER to start\n");
-                    }*/
+                    }
                 }
                 else if ((flags & FL_FSM) == FL_VERIFYUSER) {
                     // toggle next admin access option 0-1 (any time)
@@ -497,15 +528,21 @@ static void gpio_keypad_loop(void *arg)
                     // toggle prev (down) admin control option 0-2 (any time)
 
                     // TEST: comment out bottom for now
-                    /*accessAdmin -= (accessAdmin == 0) ? -2 : 1;
+                    accessAdmin -= (accessAdmin == 0) ? -2 : 1;
                     //accessAdmin = (accessAdmin-1) % 3;
                     if (accessAdmin == 0) {
+                        // Print 1: Add Profile
+                        WS2_msg_print(&CFAL1602, item1, 1, false);
                         printf("Add profile. Press ENTER to start\n");
                     } else if (accessAdmin == 1) {
+                        // Print 1: Delete Profile
+                        WS2_msg_print(&CFAL1602, item2, 1, false);
                         printf("Delete profile. Press ENTER to start\n");
                     } else if (accessAdmin == 2) {
+                        // Print 1: Exit Admin
+                        WS2_msg_print(&CFAL1602, item3, 1, false);
                         printf("Exit admin mode. Press ENTER to start\n");
-                    }*/
+                    }
                 }
                 else if ((flags & FL_FSM) == FL_DELETEPROFILE) {
                     // toggle prev (down) profile option from list (only for PROFILE set. IMPLEMENT THIS)
@@ -759,17 +796,25 @@ static void gpio_task_example(void* arg)
                                 // Print 0: Access denied (1 second)
                                 // Print 1:
                                 WS2_msg_print(&CFAL1602, access_denied, 0, false);
+                                WS2_msg_clear(&CFAL1602, 1);
                                 printf("Sorry, not admin\n");
+                                vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                                // NEW: FUNCTION FOR INTEG_THINGS
+
+                                restore_to_verifyUser();
 
                                 // restore flags to verifyUser init
-                                flags = FL_VERIFYUSER | FL_PIN | FL_FP_0;
+                                /*flags = FL_VERIFYUSER | FL_PIN | FL_FP_0;
 
                                 // set admin to 0 (door open select)
                                 accessAdmin = 0;
 
                                 // init screen for verifyUser
                                 WS2_msg_clear(&CFAL1602, 0);
-                                WS2_msg_clear(&CFAL1602, 1);
+                                WS2_msg_clear(&CFAL1602, 1);*/
+
+                                // END NEW FUNCTION
                             }
                         } else {
                             // case 3: door open
@@ -793,15 +838,8 @@ static void gpio_task_example(void* arg)
                             // Toggle GPIO21 off (relay output)
                             gpio_set_level((gpio_num_t)RELAY_OUTPUT, 0); // turn off relay (GPIO21)
 
-                            // restore flags to verifyUser init
-                            flags = FL_VERIFYUSER | FL_PIN | FL_FP_0;
-
-                            // set admin to 0 (door open select)
-                            accessAdmin = 0;
-
-                            // init screen for verifyUser
-                            WS2_msg_clear(&CFAL1602, 0);
-                            WS2_msg_clear(&CFAL1602, 1);
+                            // reset system to verifyUser initial state
+                            restore_to_verifyUser();
                         }
                     }
                     else if ((flags & FL_FSM) == FL_ADDPROFILE) {

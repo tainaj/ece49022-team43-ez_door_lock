@@ -379,13 +379,13 @@ esp_err_t addProfile_PIN(uint8_t *flags, uint8_t *pin_input, uint8_t *ret_code) 
             }
 
             // Profile is there. Start comparing
-            ESP_LOGI("addProfile_PIN", "comparing profile: %d", i);
+            //ESP_LOGI("addProfile_PIN", "comparing profile: %d", i);
             isMatch = true;
 
             // Retrieve a PIN from a profile. If mismatch found, end comparison and move on to next one
             for (int j = 0; j < 4; j++) {
                 if (pin_input[j] != profiles[i].PIN[j]) {
-                    ESP_LOGI("addProfile_PIN","mismatch %d and %d\n", pin_input[j], profiles[i].PIN[j]);
+                    //ESP_LOGI("addProfile_PIN","mismatch %d and %d\n", pin_input[j], profiles[i].PIN[j]);
                     isMatch = false;
                     break;
                 }
