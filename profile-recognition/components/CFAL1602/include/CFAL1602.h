@@ -132,4 +132,11 @@ void WS2_msg_print(CFAL1602Interface *this, const char* msg, int line,
  */
 void WS2_msg_clear(CFAL1602Interface *this, int line);
 
+/**
+ * @brief Retrieve string currently printing on a line (including clear_string)
+ * @param line          line number, 0 (TOP) or 1 (BOTTOM)
+ * @return pointer to string
+ */
+char* WS2_get_string(CFAL1602Interface *this, int line);
+
 #endif /* CFAL1602_H */

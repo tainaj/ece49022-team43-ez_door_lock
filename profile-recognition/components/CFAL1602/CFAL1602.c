@@ -342,3 +342,14 @@ void WS2_msg_print(CFAL1602Interface *this, const char* msg, int line, bool isAu
 void WS2_msg_clear(CFAL1602Interface *this, int line) {
     WS2_msg_print(this, clear_string, line, false);
 }
+
+char * WS2_get_string(CFAL1602Interface *this, int line) {
+    char * outString = NULL;
+    if ((line == 0) && (line0.isEnabled)) {
+        outString = line0.msg;
+    }
+    if ((line == 1) && (line1.isEnabled)) {
+        outString = line1.msg;
+    }
+    return outString;
+}
