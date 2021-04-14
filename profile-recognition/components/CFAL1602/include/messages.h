@@ -84,6 +84,11 @@ DRAM_ATTR static const char* item3 =
 DRAM_ATTR static const char* selected_this =
     "Selected";
 
+DRAM_ATTR static const char* return_to_menu_0 =
+    "Returning to";
+DRAM_ATTR static const char* return_to_menu_1 =
+    "menu...";
+
 // Add Profile messages
 DRAM_ATTR static const char* admin_add =
     "Admin: Add";

@@ -62,3 +62,16 @@ void restore_to_verifyUser() {
     WS2_msg_clear(&CFAL1602, 0);
     WS2_msg_clear(&CFAL1602, 1);
 }
+
+void restore_to_idleState() {
+    // restore flags to idleState init
+    flags = FL_IDLESTATE;
+
+    // set admin to 0 (addProfile select)
+    accessAdmin = 0;
+
+    // init screen for idleState. Show item 1 (0-exit, 1-add, 2-delete)
+    WS2_msg_print(&CFAL1602, admin_menu, 0, false);
+    WS2_msg_print(&CFAL1602, item1, 1, false);
+}
+

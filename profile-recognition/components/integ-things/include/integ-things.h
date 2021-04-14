@@ -24,8 +24,17 @@
  *        - restore flags to verifyUser init
  *        - set admin to 0 (door open select)
  *        - init screen for verifyUser
- * @return See vfy_pass for description of all possible return values
+ * @return none
  */
 void restore_to_verifyUser();
+
+/**
+ * @brief reset system to idleState initial state.
+ *        - restore flags to idleState init
+ *        - set admin to 0 (addProfile select)
+ *        - init screen for idleState. Show item 1 (0-exit, 1-add, 2-delete)
+ * @return none
+ */
+void restore_to_idleState();
 
 #endif /* INTEG_THINGS_H_ */

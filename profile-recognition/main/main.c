@@ -359,16 +359,9 @@ static void gpio_keypad_loop(void *arg)
                                 WS2_msg_print(&CFAL1602, entering_admin, 0, false);
                                 printf("Entering admin..\n");
                                 vTaskDelay(1000 / portTICK_PERIOD_MS);
-                                
-                                // set flags to idleState init
-                                flags = FL_IDLESTATE;
 
-                                // set admin to 0 (addProfile select)
-                                accessAdmin = 0;
-
-                                // init screen for idleState. Show item 1 (0-exit, 1-add, 2-delete)
-                                WS2_msg_print(&CFAL1602, admin_menu, 0, false);
-                                WS2_msg_print(&CFAL1602, item1, 0, false);
+                                // reset system to idleState initial state.
+                                restore_to_idleState();
 
                             } else {
                                 // case 2: admin access, not privileged
@@ -617,31 +610,26 @@ static void gpio_keypad_loop(void *arg)
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                 // case 1: verifyUser abort : abort PIN entry
-                if ((flags & FL_FSM) == FL_VERIFYUSER) {                    
-                    // restore flags to verifyUser init
-                    flags = FL_VERIFYUSER | FL_PIN | FL_FP_0;
+                if ((flags & FL_FSM) == FL_VERIFYUSER) {
 
-                    // set admin to 0 (door open select)
-                    accessAdmin = 0;
-                    printf("Leaving admin verification\n");
-
-                    // init screen for verifyUser
-                    WS2_msg_clear(&CFAL1602, 0);
-                    WS2_msg_clear(&CFAL1602, 1);
+                    // reset system to verifyUser initial state.
+                    restore_to_verifyUser();
 
                     // return
                 }
                 // case 2: idleState, addProfile, deleteProfile abort:
                 else {
-                    // set flags to idleState init
-                    flags = FL_IDLESTATE;
+                    // Print 0: Returning to (1 second)
+                    // Print 1: menu (1 second)
+                    WS2_msg_print(&CFAL1602, return_to_menu_0, 0, false);
+                    WS2_msg_print(&CFAL1602, return_to_menu_1, 1, false);
+                    printf("Returning to menu...\n");
+                    vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-                    // set admin to 1 (addProfile select)
-                    accessAdmin = 0;
+                    // reset system to idleState initial state.
+                    restore_to_idleState();
 
-                    // init screen for idleState. Show item 1 (0-exit, 1-add, 2-delete)
-                    WS2_msg_print(&CFAL1602, admin_menu, 0, false);
-                    WS2_msg_print(&CFAL1602, item1, 0, false);
+                    // return
                 }
                 // release lock
                 flags |= FL_INPUT_READY;
@@ -781,16 +769,10 @@ static void gpio_task_example(void* arg)
                                 printf("Entering admin..\n");
                                 vTaskDelay(1000 / portTICK_PERIOD_MS);
                                 
-                                // set flags to idleState init
-                                flags = FL_IDLESTATE;
+                                // reset system to idleState initial state.
+                                restore_to_idleState();
 
-                                // set admin to 0 (addProfile select)
-                                accessAdmin = 0;
-
-                                // init screen for idleState. Show item 1 (0-exit, 1-add, 2-delete)
-                                WS2_msg_print(&CFAL1602, admin_menu, 0, false);
-                                WS2_msg_print(&CFAL1602, item1, 0, false);
-
+                                // return
                             } else {
                                 // case 2: admin access, not privileged
                                 // Print 0: Access denied (1 second)
@@ -800,21 +782,10 @@ static void gpio_task_example(void* arg)
                                 printf("Sorry, not admin\n");
                                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-                                // NEW: FUNCTION FOR INTEG_THINGS
-
+                                // reset system to verifyUser initial state.
                                 restore_to_verifyUser();
 
-                                // restore flags to verifyUser init
-                                /*flags = FL_VERIFYUSER | FL_PIN | FL_FP_0;
-
-                                // set admin to 0 (door open select)
-                                accessAdmin = 0;
-
-                                // init screen for verifyUser
-                                WS2_msg_clear(&CFAL1602, 0);
-                                WS2_msg_clear(&CFAL1602, 1);*/
-
-                                // END NEW FUNCTION
+                                // return
                             }
                         } else {
                             // case 3: door open
