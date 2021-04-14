@@ -394,20 +394,11 @@ static void gpio_keypad_loop(void *arg)
 
                 if ((flags & FL_FSM) == FL_IDLESTATE) {
                     // toggle next (up) admin control option 0-2 (any time)
-                    accessAdmin = (accessAdmin+1) % 3;
-                    if (accessAdmin == 0) {
-                        // Print 1: Add Profile
-                        WS2_msg_print(&CFAL1602, item1, 1, false);
-                        printf("Add profile. Press ENTER to start\n");
-                    } else if (accessAdmin == 1) {
-                        // Print 1: Delete Profile
-                        WS2_msg_print(&CFAL1602, item2, 1, false);
-                        printf("Delete profile. Press ENTER to start\n");
-                    } else if (accessAdmin == 2) {
-                        // Print 1: Exit Admin
-                        WS2_msg_print(&CFAL1602, item3, 1, false);
-                        printf("Exit admin mode. Press ENTER to start\n");
-                    }
+
+                    // toggle next admin control option 0-2. Choose direction
+                    idleState_toggle_menu(true);
+
+                    // return
                 }
                 else if ((flags & FL_FSM) == FL_VERIFYUSER) {
                     // toggle next admin access option 0-1 (any time)
@@ -448,22 +439,10 @@ static void gpio_keypad_loop(void *arg)
                 if ((flags & FL_FSM) == FL_IDLESTATE) {
                     // toggle prev (down) admin control option 0-2 (any time)
 
-                    // TEST: comment out bottom for now
-                    accessAdmin -= (accessAdmin == 0) ? -2 : 1;
-                    //accessAdmin = (accessAdmin-1) % 3;
-                    if (accessAdmin == 0) {
-                        // Print 1: Add Profile
-                        WS2_msg_print(&CFAL1602, item1, 1, false);
-                        printf("Add profile. Press ENTER to start\n");
-                    } else if (accessAdmin == 1) {
-                        // Print 1: Delete Profile
-                        WS2_msg_print(&CFAL1602, item2, 1, false);
-                        printf("Delete profile. Press ENTER to start\n");
-                    } else if (accessAdmin == 2) {
-                        // Print 1: Exit Admin
-                        WS2_msg_print(&CFAL1602, item3, 1, false);
-                        printf("Exit admin mode. Press ENTER to start\n");
-                    }
+                    // toggle next admin control option 0-2. Choose direction
+                    idleState_toggle_menu(false);
+
+                    // return
                 }
                 else if ((flags & FL_FSM) == FL_DELETEPROFILE) {
                     // toggle prev (down) profile option from list (only for PROFILE set. IMPLEMENT THIS)
@@ -683,7 +662,7 @@ void app_main(void)
 {
     // 1: Initialize the main project loop
     // a) Install GPIO ISR service
-    // GPIO23: mode button
+    // GPIO23: 
     // GPIO5: enter button
     // GPIO4: FP scanner input 
     gpio_install_isr_service(0);

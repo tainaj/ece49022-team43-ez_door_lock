@@ -63,4 +63,13 @@ void open_door();
  */
 void verifyUser_outcome_handler();
 
+/**
+ * @brief toggle next admin control option 0-2. Choose direction
+ *        - determine direction of toggle
+ *        - print hovering menu item
+ * @param increasing true if going 0, 1, 2, 0..., false if going 2, 1, 0, 2...
+ * @return none
+ */
+void idleState_toggle_menu(bool increasing);
+
 #endif /* INTEG_THINGS_H_ */

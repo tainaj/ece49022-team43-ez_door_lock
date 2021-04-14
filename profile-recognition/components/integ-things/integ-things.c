@@ -153,3 +153,27 @@ void verifyUser_outcome_handler() {
         }
     }
 }
+
+void idleState_toggle_menu(bool increasing) {
+    // determine direction of toggle
+    if (increasing) {
+        accessAdmin = (accessAdmin == 2) ? 0 : accessAdmin+1;
+    } else {
+        accessAdmin = (accessAdmin == 0) ? 2 : accessAdmin-1;
+    }
+
+    // print hovering menu item
+    if (accessAdmin == 0) {
+        // Print 1: Add Profile
+        WS2_msg_print(&CFAL1602, item1, 1, false);
+        printf("Add profile. Press ENTER to start\n");
+    } else if (accessAdmin == 1) {
+        // Print 1: Delete Profile
+        WS2_msg_print(&CFAL1602, item2, 1, false);
+        printf("Delete profile. Press ENTER to start\n");
+    } else if (accessAdmin == 2) {
+        // Print 1: Exit Admin
+        WS2_msg_print(&CFAL1602, item3, 1, false);
+        printf("Exit admin mode. Press ENTER to start\n");
+    }
+}
