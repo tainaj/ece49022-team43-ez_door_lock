@@ -182,9 +182,9 @@ void app_main(void)
 
     printf("4\n");
     esp_http_client_fetch_headers(client);
-    char data_buff[100];
-    int read = esp_http_client_read(client, data_buff, 100);
-    printf("THE READ IS %s\n", data_buff);
+    char data_buff[100]; //Data retrieving from the web
+    int read = esp_http_client_read(client, data_buff, 100); //Actual Length of the data is only 5 bytes
+    printf("THE READ IS %s\n", data_buff); //"THE READ IS ON" or "THE READ IS OFF"
 
 
     esp_http_client_close(client);
