@@ -128,4 +128,17 @@ esp_err_t addProfile_compile(uint8_t *flags, uint8_t *ret_code);
  */
 esp_err_t deleteProfile_remove(uint8_t *flags, int prof_id, uint8_t *ret_code);
 
+// Other functions
+/**
+ * \brief get pinBuffer array address (DO NOT MODIFY)
+ * \retval none
+ */
+uint8_t * get_pinBuffer();
+
+/**
+ * \brief get privBuffer value
+ * \retval none
+ */
+uint8_t get_privBuffer();
+
 #endif /* PROF_RECOG_H_ */

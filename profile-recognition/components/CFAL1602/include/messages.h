@@ -93,6 +93,53 @@ DRAM_ATTR static const char* return_to_menu_1 =
 DRAM_ATTR static const char* admin_add =
     "Admin: Add";
 
+DRAM_ATTR static const char* pin_already_used =
+    "PIN already used";
+
+DRAM_ATTR static const char* pin_good_for_use =
+    "PIN good for use";
+
+DRAM_ATTR static const char* invalid_priv =
+    "Invalid priv";
+DRAM_ATTR static const char* must_be_1_or_2 =
+    "Must be 1 or 2";
+
+DRAM_ATTR static const char* priv_accepted =
+    "Priv accepted";
+
+DRAM_ATTR static const char* awaiting_2_fp =
+    "Awaiting 2 FP";
+
+DRAM_ATTR static const char* awaiting_1_fp =
+    "Awaiting 1 FP";
+
+DRAM_ATTR static const char* reenter_fps =
+    "Reenter FPs";
+
+DRAM_ATTR static const char* fps_dont_match_0 =
+    "Fingerprints";
+DRAM_ATTR static const char* fps_dont_match_1 =
+    "don't match";
+
+DRAM_ATTR static const char* fp_accepted =
+    "FP accepted";
+
+DRAM_ATTR static const char* create_profile =
+    "Create profile?";
+
+DRAM_ATTR static const char* creating_profile =
+    "Creating profile";
+
+DRAM_ATTR static const char* slots_full_0 =
+    "Error:          "
+    "Delete a profile";
+DRAM_ATTR static const char* slots_full_1 =
+    "Slots full      "
+    "to free slot    ";
+
+DRAM_ATTR static const char* profile_created =
+    "Profile created:";
+
 // Delete Profile messages
 DRAM_ATTR static const char* admin_delete =
     "Admin: Delete";

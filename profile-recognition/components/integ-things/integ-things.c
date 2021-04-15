@@ -21,6 +21,8 @@ extern CFAL1602Interface CFAL1602;
  */
 
 // externs to main function:
+extern bool isHelp;
+
 extern int accessAdmin; // currently seeking admin mode (by pressing admin query button)
 extern volatile uint8_t flags; // used to track inputs
 
@@ -53,6 +55,22 @@ extern uint8_t privilege;
 }*/
 
 // public functions
+
+// aquire lock INPUT_READY
+bool my_acquire_lock(bool checkForHelp) {
+    if (!(flags & FL_INPUT_READY)) {
+        printf("Wait\n");
+        return false;
+    }
+    // blocked if help is activated
+    if (checkForHelp && isHelp) {
+        printf("Turn off help before trying again\n");
+        return false;
+    }
+    // successful acquire
+    flags &= ~FL_INPUT_READY;
+    return true;
+}
 
 void restore_to_verifyUser() {
     // restore flags to verifyUser init
