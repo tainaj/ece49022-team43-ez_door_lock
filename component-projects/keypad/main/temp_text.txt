@@ -1,0 +1,2 @@
+Currently, Arduino files are here. Delete as we progressin converting Arduino project to ESP-IDF project.
+

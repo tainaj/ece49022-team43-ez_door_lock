@@ -1,0 +1,11 @@
+{
+    "idf.portWin": "COM4",
+    "idf.flashType": "UART",
+    "files.associations": {
+        "ios": "cpp",
+        "array": "cpp",
+        "xstring": "cpp",
+        "xutility": "cpp"
+    },
+    "cmake.configureOnOpen": false
+}
