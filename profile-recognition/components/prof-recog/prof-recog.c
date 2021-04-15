@@ -426,11 +426,15 @@ esp_err_t addProfile_privilege(uint8_t *flags, uint8_t privilege, uint8_t *ret_c
     *ret_code = 1;
 
     if (*flags & FL_PRIVILEGE) {
-        // 1: Wait for PIN entry. When recieved, wait for 500ms. (no reason)
+        // Print 0: 
+        // Print 1: 
+        WS2_msg_clear(&CFAL1602, 0);
+        WS2_msg_clear(&CFAL1602, 1);
         printf("Updating privilege to %d\n", (int)privilege);
         vTaskDelay(20 / portTICK_PERIOD_MS);
-        privBuffer = privilege;
-        *flags &= ~FL_PRIVILEGE;
+
+        privBuffer = privilege; // Update privilege entry
+        *flags &= ~FL_PRIVILEGE; // clear PRIV flag
         *ret_code = 0; // 0 = SUCCESS
         return ESP_OK;
     }

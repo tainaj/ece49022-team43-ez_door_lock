@@ -122,17 +122,10 @@ static void gpio_keypad_loop(void *arg)
             case ('8') :
             case ('9') :
             case ('0') :
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+                if (!my_acquire_lock(true)) {
                     break;
                 }
-                // blocked if help is activated
-                if (isHelp) {
-                    printf("Turn off help before trying again\n");
-                    break;
-                }
-                flags &= ~FL_INPUT_READY;
+
                 if ((flags & FL_FSM) == FL_VERIFYUSER) {
                     // enter PIN digit (any time)
 
@@ -160,9 +153,6 @@ static void gpio_keypad_loop(void *arg)
 
                     // PIN mode: all digits 0-9
                     if (flags & FL_PIN) {
-                        // do thing
-                        // Update pinChar
-
                         // Enter digit up to allowed number of chars (4)
                         if (pin_idx < 4) {
                             // Print 1: PIN: %%%% (edit pinChar, increment for each digit)
@@ -176,10 +166,15 @@ static void gpio_keypad_loop(void *arg)
                     // PRIV mode: digits 1,2
                     else if (flags & FL_PRIVILEGE) {
                         if ((key == '1') || (key == '2')) {
-                            // do thing
-
-
-                            
+                            // Enter digit up to allowed number of chars (1)
+                            if (pin_idx < 1) {
+                                // Print 1: PIN: %%%% (edit pinChar, increment for each digit)
+                                pinCharTemp[pin_idx] = key;
+                                pinEnter[pin_idx] = (int)(key - '1'); // convert '1' to 0, '2' to 1
+                                pin_idx++;
+                                WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                            }
+                            // return
                         }
                     }
                 }
@@ -188,17 +183,10 @@ static void gpio_keypad_loop(void *arg)
                 break;
 
             case ('*') :
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+
+                if (!my_acquire_lock(true)) {
                     break;
                 }
-                // blocked if help is activated
-                if (isHelp) {
-                    printf("Turn off help before trying again\n");
-                    break;
-                }
-                flags &= ~FL_INPUT_READY;
 
                 if ((flags & FL_FSM) == FL_VERIFYUSER) {
                     // backspace PIN digit (any time)
@@ -230,17 +218,9 @@ static void gpio_keypad_loop(void *arg)
                 break;
 
             case ('#') :
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+                if (!my_acquire_lock(true)) {
                     break;
                 }
-                // blocked if help is activated
-                if (isHelp) {
-                    printf("Turn off help before trying again\n");
-                    break;
-                }
-                flags &= ~FL_INPUT_READY;
 
                 if ((flags & FL_FSM) == FL_IDLESTATE) {
                     // select admin control option (any time)
@@ -361,11 +341,12 @@ static void gpio_keypad_loop(void *arg)
                 }
                 else if ((flags & FL_FSM) == FL_ADDPROFILE) {
                     // enter PIN, priv, compile (any time)
-
-                    bool isPinGood = (pin_idx < 4) ? false : true;
-
+                    bool isPinGood;
+                    
                     // PIN mode: submit PIN
                     if (flags & FL_PIN) {
+                        isPinGood = (pin_idx < 4) ? false : true;
+
                         // Clear PIN display and contents
                         WS2_msg_clear(&CFAL1602, 1);
                         for (int i=0; i < 16; i++) {
@@ -449,24 +430,68 @@ static void gpio_keypad_loop(void *arg)
                             }
                         }
                     }
+                    else if (flags & FL_PRIVILEGE) {
+                        isPinGood = (pin_idx < 1) ? false : true;
+
+                        // Clear PIN display and contents
+                        WS2_msg_clear(&CFAL1602, 1);
+                        for (int i=0; i < 16; i++) {
+                            pinChar[i] = '\0';
+                        }
+                        pin_idx = 0;
+
+                        // case 1: No privilege added
+                        if (!isPinGood) {
+                            // Print 0: Invalid priv (1 second)
+                            // Print 1: Must be 1 or 2 (1 second)
+                            WS2_msg_print(&CFAL1602, invalid_priv, 0, false);
+                            WS2_msg_print(&CFAL1602, must_be_1_or_2, 1, false);
+                            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                            // Print 0: Admin: Add
+                            WS2_msg_print(&CFAL1602, admin_add, 0, false);
+
+                            // Print 1: Privilege (variable). Show Privilege prescript
+                            if (pin_idx == 0) {
+                                // Print 1: Privilege: (edit pinChar, set pinEnter to +11)
+                                sprintf(pinChar, "%s", "Privilege: \0\0\0\0\0");
+                                pinCharTemp = pinChar + 11;
+                                WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                            } else {
+                                ESP_LOGE("me", "bad bad bad");
+                            }
+                            printf("Enter PIN...\n");
+
+                            // return. Still in Privilege mode
+                        }
+                        // case 2: Privilege good
+                        else {
+                            // call addProfile_privilege()
+                            privEnter = pinEnter[0];
+                            addProfile_privilege(&flags, privEnter, &ret_code);
+                            
+                            // Print 0: Priv accepted (1 second)
+                            WS2_msg_print(&CFAL1602, priv_accepted, 0, false);
+                            printf("PIN and privilege completed.\n");
+                            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                            // Print 0: Admin Add
+                            // Print 1: Awaiting 2 FP
+                            WS2_msg_print(&CFAL1602, admin_add, 0, false);
+                            WS2_msg_print(&CFAL1602, awaiting_2_fp, 1, false);
+                            printf("Awaiting 2 fingerprints...\n");
+
+                            // return. Still in FP mode
+                        }
+                    }
+                    else if (flags & FL_FP_01) {
+                        // Print 0
+                        // WAIT
+                    }
+
 
                     // TEST: comment out the bottom for now
-                    /*if (flags & FL_PIN) {
-                        pinEnter = pin2; // TEST ONLY
-                        addProfile_PIN(&flags, pinEnter, &ret_code);
-                        if (ret_code == 0) {
-                            printf("Enter privilege level...\n");
-                        }
-                    }
-                    else if (flags & FL_PRIVILEGE) {
-                        addProfile_privilege(&flags, privEnter, &ret_code);
-                        printf("PIN and privilege completed.\n");
-                        if ((flags & FL_FP_01) == 0) {
-                            printf("Fingerprint completed. Press ENTER to complete Add Profile\n");
-                        } else {
-                            printf("Awaiting fingerprint...\n");
-                        }
-                    }
+                    /*
                     else if (flags & FL_FP_01) {
                         printf("No fingerprint loaded. Awaiting fingerprint...\n");
                     }
@@ -495,17 +520,9 @@ static void gpio_keypad_loop(void *arg)
                 break;
 
             case ('A') : // special character A : up arrow
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+                if (!my_acquire_lock(true)) {
                     break;
                 }
-                // blocked if help is activated
-                if (isHelp) {
-                    printf("Turn off help before trying again\n");
-                    break;
-                }
-                flags &= ~FL_INPUT_READY;
 
                 if ((flags & FL_FSM) == FL_IDLESTATE) {
                     // toggle next (up) admin control option 0-2 (any time)
@@ -539,17 +556,9 @@ static void gpio_keypad_loop(void *arg)
                 break;
 
             case ('B') : // special character B : down arrow
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+                if (!my_acquire_lock(true)) {
                     break;
                 }
-                // blocked if help is activated
-                if (isHelp) {
-                    printf("Turn off help before trying again\n");
-                    break;
-                }
-                flags &= ~FL_INPUT_READY;
 
                 if ((flags & FL_FSM) == FL_IDLESTATE) {
                     // toggle prev (down) admin control option 0-2 (any time)
@@ -568,12 +577,9 @@ static void gpio_keypad_loop(void *arg)
                 break;
 
             case ('C') : // special character C : help button
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+                if (!my_acquire_lock(false)) {
                     break;
                 }
-                flags &= ~FL_INPUT_READY;
 
                 // toggle help (any time)
 
@@ -603,17 +609,9 @@ static void gpio_keypad_loop(void *arg)
                 break;
             
             case ('D') : // special character D : abort button
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+                if (!my_acquire_lock(true)) {
                     break;
                 }
-                // blocked if help is activated
-                if (isHelp) {
-                    printf("Turn off help before trying again\n");
-                    break;
-                }
-                flags &= ~FL_INPUT_READY;
 
                 // abort to verifyUser or idleState-admin mode (any time)
 
@@ -683,12 +681,9 @@ static void gpio_task_example(void* arg)
                     if (!is_pressed) {
                         break;
                     }
-                    // attempt to get lock
-                    if (!(flags & FL_INPUT_READY)) {
-                        printf("Wait\n");
+                    if (!my_acquire_lock(false)) {
                         break;
                     }
-                    flags &= ~FL_INPUT_READY;
 
                     if ((flags & FL_FSM) == FL_VERIFYUSER) {
                         // Clear PIN display and contents
@@ -720,17 +715,9 @@ static void gpio_task_example(void* arg)
                     if (is_pressed) {
                         break;
                     }
-                    // attempt to get lock
-                    if (!(flags & FL_INPUT_READY)) {
-                        printf("Wait\n");
+                    if (!my_acquire_lock(true)) {
                         break;
                     }
-                    // blocked if help is activated
-                    if (isHelp) {
-                        printf("Turn off help before trying again\n");
-                        break;
-                    }
-                    flags &= ~FL_INPUT_READY;
 
                     if ((flags & FL_FSM) == FL_VERIFYUSER) {
                         // Clear PIN display and contents
@@ -793,12 +780,6 @@ void app_main(void)
     // NEW: initialize Keypad!
     Keypad_init(&keypad, makeKeymap(keys), rowPins, colPins, ROWS, COLS);
     xTaskCreate(gpio_keypad_loop, "gpio_keypad_loop", 4096, NULL, 12, NULL);
-    // SKIP BOTTOM UNTIL ABOVE WORK SUCCESSFULLY!
-
-
-    // TEST: Wathcog stuff
-    //vTaskDelay();
-    //(unsigned long) (esp_timer_get_time() / 1000ULL)
     
     // 3: Init profile recognition
 

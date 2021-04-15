@@ -99,6 +99,17 @@ DRAM_ATTR static const char* pin_already_used =
 DRAM_ATTR static const char* pin_good_for_use =
     "PIN good for use";
 
+DRAM_ATTR static const char* invalid_priv =
+    "Invalid priv";
+DRAM_ATTR static const char* must_be_1_or_2 =
+    "Must be 1 or 2";
+
+DRAM_ATTR static const char* priv_accepted =
+    "Priv accepted";
+
+DRAM_ATTR static const char* awaiting_2_fp =
+    "Awaiting 2 FP";
+
 // Delete Profile messages
 DRAM_ATTR static const char* admin_delete =
     "Admin: Delete";
