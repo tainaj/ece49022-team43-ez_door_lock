@@ -461,6 +461,21 @@ static void gpio_keypad_loop(void *arg)
                 else if ((flags & FL_FSM) == FL_DELETEPROFILE) {
                     // select profile option from list (only for PROFILE set)
                     // accept profile deletion during confirmation (only for PROFILE cleared)
+                    if (flags | FL_PROFILEID) {
+                        // enter currentProfile to profileIdEnter
+                        profile_t * prof_ptr;
+                        prof_ptr = profile_idx_getCurrProfile();
+                        profileIdEnter = prof_ptr->idx;
+
+                        // clear PROFILE flag
+                        flags &= ~FL_PROFILEID;
+
+                        // Print 0: Are you sure?
+                        WS2_msg_print(&CFAL1602, are_you_sure, 0, false);
+                    }
+                    else {
+                        //f
+                    }
 
                     // TEST: comment out bottom for now. Wait for implementation of list select.
                     /*if (flags & FL_PROFILEID) {
@@ -504,10 +519,27 @@ static void gpio_keypad_loop(void *arg)
                     }
                 }
                 else if ((flags & FL_FSM) == FL_DELETEPROFILE) {
-                    // toggle next (up) profile option from list (only for PROFILE set. IMPLEMENT THIS)
-                    // direction of toggle: forward
-                    accessAdmin = 
 
+                    if (flags & FL_PROFILEID) {
+                        // toggle next (up) profile option from list (only for PROFILE set. IMPLEMENT THIS)
+                        // direction of toggle: forward
+
+                        profile_t * prof_ptr;
+                        if (profile_idx_seekFullSlot(true) == -1) {
+                            ESP_LOGE("me", "No slots are used! Where are the profiles?");
+                        }
+                        prof_ptr = profile_idx_getCurrProfile();
+
+                        // set print buffer to next thing
+                        // Print 1: P: %3d      [admin]
+                        if (prof_ptr->privilege == 1) {
+                            sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "     admin");
+                        } else {
+                            sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "          ");
+                        }
+                        WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                    }
+                    // return
                 }
                 // release lock
                 flags |= FL_INPUT_READY;
@@ -527,8 +559,26 @@ static void gpio_keypad_loop(void *arg)
                     // return
                 }
                 else if ((flags & FL_FSM) == FL_DELETEPROFILE) {
-                    // toggle prev (down) profile option from list (only for PROFILE set. IMPLEMENT THIS)
+                    if (flags & FL_PROFILEID) {
+                        // toggle next (down) profile option from list (only for PROFILE set. IMPLEMENT THIS)
+                        // direction of toggle: backward
 
+                        profile_t * prof_ptr;
+                        if (profile_idx_seekFullSlot(false) == -1) {
+                            ESP_LOGE("me", "No slots are used! Where are the profiles?");
+                        }
+                        prof_ptr = profile_idx_getCurrProfile();
+
+                        // set print buffer to next thing
+                        // Print 1: P: %3d      [admin]
+                        if (prof_ptr->privilege == 1) {
+                            sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "     admin");
+                        } else {
+                            sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "          ");
+                        }
+                        WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                    }
+                    // return
                 }
                 // release lock
                 flags |= FL_INPUT_READY;
