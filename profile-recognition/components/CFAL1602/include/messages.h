@@ -96,8 +96,8 @@ DRAM_ATTR static const char* admin_add =
 DRAM_ATTR static const char* pin_already_used =
     "PIN already used";
 
-DRAM_ATTR static const char* pin_good_for_use =
-    "PIN good for use";
+DRAM_ATTR static const char* pin_accepted =
+    "PIN accepted";
 
 DRAM_ATTR static const char* invalid_priv =
     "Invalid priv";
