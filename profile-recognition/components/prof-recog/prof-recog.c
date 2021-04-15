@@ -37,9 +37,11 @@ profile_t profiles[MAX_PROFILES] = {
         .isUsed = 1,    // Slot 0. Default admin profile (no fingerprint)
         .PIN = {1, 2, 3, 4},
         .privilege = 1,
+        .idx = 0,
     },                  /// Slots 1-199. Deallocated. Not seen
 };
 
+int profile_idx = 0; // index of profile in profiles. Initialized to 0 (factory set profile)
 
 // useful extern for integ-things
 extern char pinChar[17];
@@ -50,6 +52,8 @@ static R502_sys_para_t sys_para;
 static uint16_t page_id;
 static uint16_t match_score;
 static int up_char_size = 0;
+
+static int numProfilesFull = 0;
 
 // The object under test
 R502Interface R502 = {
@@ -174,6 +178,8 @@ esp_err_t profileRecog_init() {
     // Update the profile slot that is open...
     const int count = 200;
     for (int i = 0; i < count; i++) {
+        // Populate idx
+        profiles[i].idx = i;
         // Read profile from SD card to buffers
         esp_err_t err = SD_readProfile(i, pinBuffer, 4, &privBuffer, 1, fingerprintBuffer, R502_TEMPLATE_SIZE);
         if (err == ESP_ERR_NOT_FOUND) {
@@ -211,7 +217,9 @@ esp_err_t profileRecog_init() {
         }
 
         ESP_LOGI("profileRecog_init", "Successful import");
+        numProfilesFull++;
     }
+    ESP_LOGI("profileRecog_init", "Number of profiles registered: %d", numProfilesFull);
 
     return ESP_OK;
 }
@@ -554,6 +562,9 @@ esp_err_t addProfile_compile(uint8_t *flags, uint8_t *ret_code) {
     WS2_msg_print(&CFAL1602, pinChar, 1, false);
     vTaskDelay(3000 / portTICK_PERIOD_MS);
 
+    // Successful
+    numProfilesFull++;
+    ESP_LOGI("profileRecog_init", "Number of profiles registered: %d", numProfilesFull);
     return ESP_OK;
 }
 
@@ -573,6 +584,8 @@ esp_err_t deleteProfile_remove(uint8_t *flags, int prof_id, uint8_t *ret_code) {
 
         // 3: clear entry on buffers
         profiles[prof_id].isUsed = 0;
+        numProfilesFull--;
+        ESP_LOGI("profileRecog_init", "Number of profiles registered: %d", numProfilesFull);
 
         // 4: reset 
         *ret_code = 0;
@@ -589,4 +602,46 @@ uint8_t * get_pinBuffer() {
 
 uint8_t get_privBuffer() {
     return privBuffer;
+}
+
+// move profile_idx to 0
+void profile_idx_reset() {
+    profile_idx = 0;
+}
+
+// get current profile
+profile_t * profile_idx_getCurrProfile() {
+    return &profiles[profile_idx];
+}
+
+// from current idx position, find next empty slot
+int profile_idx_seekEmptySlot(bool direction) {
+    if (numProfilesFull == MAX_PROFILES) {
+        return -1;
+    }
+    do {
+        // increment to next position (circular ++ or --)
+        if (direction) {
+            profile_idx = (profile_idx == MAX_PROFILES-1) ? 0 : profile_idx+1;
+        } else {
+            profile_idx = (profile_idx == 0) ? MAX_PROFILES-1 : profile_idx-1;
+        }
+    } while (profiles[profile_idx].isUsed);
+    return profile_idx;
+}
+
+// from current idx position, find next empty slot
+int profile_idx_seekFullSlot(bool direction) {
+    if (numProfilesFull == 0) {
+        return -1;
+    }
+    do {
+        // increment to next position (circular ++ or --)
+        if (direction) {
+            profile_idx = (profile_idx == MAX_PROFILES-1) ? 0 : profile_idx+1;
+        } else {
+            profile_idx = (profile_idx == 0) ? MAX_PROFILES-1 : profile_idx-1;
+        }
+    } while (!profiles[profile_idx].isUsed);
+    return profile_idx;
 }

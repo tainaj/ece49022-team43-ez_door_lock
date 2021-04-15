@@ -14,9 +14,7 @@ extern CFAL1602Interface CFAL1602;
  *      main loop.
  * 
  * Functions    :
- *      - verify_user
- *      - add_profile
- *      - delete_profile
+ *      - see below
  * --------------------------------------------------------------------------
  */
 
@@ -25,6 +23,10 @@ extern bool isHelp;
 
 extern int accessAdmin; // currently seeking admin mode (by pressing admin query button)
 extern volatile uint8_t flags; // used to track inputs
+
+extern char * pinCharTemp;
+extern char pinChar[17];
+extern int pin_idx;
 
 extern uint8_t ret_code;
 extern uint8_t privilege;
@@ -56,7 +58,12 @@ extern uint8_t privilege;
 
 // public functions
 
-// aquire lock INPUT_READY
+/**
+ * ------------------------------------------------
+ * Small sized shortcuts (single block on diagrams)
+ * ------------------------------------------------
+ */
+
 bool my_acquire_lock(bool checkForHelp) {
     if (!(flags & FL_INPUT_READY)) {
         printf("Wait\n");
@@ -71,6 +78,35 @@ bool my_acquire_lock(bool checkForHelp) {
     flags &= ~FL_INPUT_READY;
     return true;
 }
+
+void print_buffer_clear() {
+    // clear PIN display and contents
+    WS2_msg_clear(&CFAL1602, 1);
+    for (int i=0; i < 16; i++) {
+        pinChar[i] = '\0';
+    }
+    pin_idx = 0;
+}
+
+void print_buffer_preset(bool isPinNotPriv) {
+    // Print 1: PIN (variable). Show PIN prescript
+    if (isPinNotPriv) {
+        sprintf(pinChar, "%s", "PIN: \0\0\0\0\0\0\0\0\0\0\0");
+        pinCharTemp = pinChar + 5;
+    } else {
+        // Print 1: Privilege (variable). Show Privilege prescript
+        sprintf(pinChar, "%s", "Privilege: \0\0\0\0\0");
+        pinCharTemp = pinChar + 11;
+    }
+    WS2_msg_print(&CFAL1602, pinChar, 1, false);
+    pin_idx = 0; // to be on the safe side
+}
+
+/**
+ * ------------------------------------------------
+ * Medium sized shortcuts
+ * ------------------------------------------------
+ */
 
 void restore_to_verifyUser() {
     // restore flags to verifyUser init
@@ -110,6 +146,36 @@ void open_door() {
     // Toggle GPIO21 off (relay output)
     gpio_set_level((gpio_num_t)RELAY_OUTPUT, 0); // turn off relay (GPIO21)
 }
+
+void idleState_toggle_menu(bool increasing) {
+    // determine direction of toggle
+    if (increasing) {
+        accessAdmin = (accessAdmin == 2) ? 0 : accessAdmin+1;
+    } else {
+        accessAdmin = (accessAdmin == 0) ? 2 : accessAdmin-1;
+    }
+
+    // print hovering menu item
+    if (accessAdmin == 0) {
+        // Print 1: Add Profile
+        WS2_msg_print(&CFAL1602, item1, 1, false);
+        printf("Add profile. Press ENTER to start\n");
+    } else if (accessAdmin == 1) {
+        // Print 1: Delete Profile
+        WS2_msg_print(&CFAL1602, item2, 1, false);
+        printf("Delete profile. Press ENTER to start\n");
+    } else if (accessAdmin == 2) {
+        // Print 1: Exit Admin
+        WS2_msg_print(&CFAL1602, item3, 1, false);
+        printf("Exit admin mode. Press ENTER to start\n");
+    }
+}
+
+/**
+ * ------------------------------------------------
+ * Large sized shortcuts (uses smaller shortcuts)
+ * ------------------------------------------------
+ */
 
 void verifyUser_outcome_handler() {
     // case 1: bad fingerprint, denied
@@ -169,29 +235,5 @@ void verifyUser_outcome_handler() {
             // reset system to verifyUser initial state
             restore_to_verifyUser();
         }
-    }
-}
-
-void idleState_toggle_menu(bool increasing) {
-    // determine direction of toggle
-    if (increasing) {
-        accessAdmin = (accessAdmin == 2) ? 0 : accessAdmin+1;
-    } else {
-        accessAdmin = (accessAdmin == 0) ? 2 : accessAdmin-1;
-    }
-
-    // print hovering menu item
-    if (accessAdmin == 0) {
-        // Print 1: Add Profile
-        WS2_msg_print(&CFAL1602, item1, 1, false);
-        printf("Add profile. Press ENTER to start\n");
-    } else if (accessAdmin == 1) {
-        // Print 1: Delete Profile
-        WS2_msg_print(&CFAL1602, item2, 1, false);
-        printf("Delete profile. Press ENTER to start\n");
-    } else if (accessAdmin == 2) {
-        // Print 1: Exit Admin
-        WS2_msg_print(&CFAL1602, item3, 1, false);
-        printf("Exit admin mode. Press ENTER to start\n");
     }
 }
