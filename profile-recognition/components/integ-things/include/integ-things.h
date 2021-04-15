@@ -23,6 +23,15 @@
 #define DOOR_INPUT 22
 
 /**
+ * @brief attempt to acquire lock
+ *        - blocked if help is activated
+ *        - successful acquire
+ * @param checkForHelp set true if blocked during help messages
+ * @return true if lock successfully acquired
+ */
+bool my_acquire_lock(bool checkForHelp);
+
+/**
  * @brief reset system to verifyUser initial state.
  *        - restore flags to verifyUser init
  *        - set admin to 0 (door open select)

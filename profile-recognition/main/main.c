@@ -122,17 +122,10 @@ static void gpio_keypad_loop(void *arg)
             case ('8') :
             case ('9') :
             case ('0') :
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+                if (!my_acquire_lock(true)) {
                     break;
                 }
-                // blocked if help is activated
-                if (isHelp) {
-                    printf("Turn off help before trying again\n");
-                    break;
-                }
-                flags &= ~FL_INPUT_READY;
+
                 if ((flags & FL_FSM) == FL_VERIFYUSER) {
                     // enter PIN digit (any time)
 
@@ -157,23 +150,43 @@ static void gpio_keypad_loop(void *arg)
                 else if ((flags & FL_FSM) == FL_ADDPROFILE) {
                     // enter PIN digit (only for PIN or PRIV set)
                     // further: 1,2 for PIN or PRIV. 0,3-9 for PIN AND PRIV only. May recommend moving to seperate cases 1 and 2 once integ-things is built
+
+                    // PIN mode: all digits 0-9
+                    if (flags & FL_PIN) {
+                        // Enter digit up to allowed number of chars (4)
+                        if (pin_idx < 4) {
+                            // Print 1: PIN: %%%% (edit pinChar, increment for each digit)
+                            pinCharTemp[pin_idx] = key;
+                            pinEnter[pin_idx] = (int)(key - '0'); // convert char to int
+                            pin_idx++;
+                            WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                        }
+                        // return
+                    }
+                    // PRIV mode: digits 1,2
+                    else if (flags & FL_PRIVILEGE) {
+                        if ((key == '1') || (key == '2')) {
+                            // Enter digit up to allowed number of chars (1)
+                            if (pin_idx < 1) {
+                                // Print 1: PIN: %%%% (edit pinChar, increment for each digit)
+                                pinCharTemp[pin_idx] = key;
+                                pinEnter[pin_idx] = (int)(key - '1'); // convert '1' to 0, '2' to 1
+                                pin_idx++;
+                                WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                            }
+                            // return
+                        }
+                    }
                 }
                 // release lock
                 flags |= FL_INPUT_READY;
                 break;
 
             case ('*') :
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+
+                if (!my_acquire_lock(true)) {
                     break;
                 }
-                // blocked if help is activated
-                if (isHelp) {
-                    printf("Turn off help before trying again\n");
-                    break;
-                }
-                flags &= ~FL_INPUT_READY;
 
                 if ((flags & FL_FSM) == FL_VERIFYUSER) {
                     // backspace PIN digit (any time)
@@ -185,15 +198,17 @@ static void gpio_keypad_loop(void *arg)
                         pinCharTemp[pin_idx] = '\0';
                         WS2_msg_print(&CFAL1602, pinChar, 1, false);
                     }
+                    // return
                 }
                 else if ((flags & FL_FSM) == FL_ADDPROFILE) {
                     // backspace PIN digit (only for PIN or PRIV set. Technically, it will not affect for all cases.)
-                    /*if (pin_idx > 0) {
+                    if (pin_idx > 0) {
                         pin_idx--;
-                        pinChar[pin_idx] = '\0';
+                        pinCharTemp[pin_idx] = '\0';
                         WS2_msg_print(&CFAL1602, pinChar, 1, false);
                         // WS2_print line 1
-                    }*/
+                    }
+                    // return
                 }
                 else if ((flags & FL_FSM) == FL_DELETEPROFILE) {
                     // reject profile deletion during confirmation (only for PROFILE cleared)
@@ -203,17 +218,9 @@ static void gpio_keypad_loop(void *arg)
                 break;
 
             case ('#') :
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+                if (!my_acquire_lock(true)) {
                     break;
                 }
-                // blocked if help is activated
-                if (isHelp) {
-                    printf("Turn off help before trying again\n");
-                    break;
-                }
-                flags &= ~FL_INPUT_READY;
 
                 if ((flags & FL_FSM) == FL_IDLESTATE) {
                     // select admin control option (any time)
@@ -334,33 +341,180 @@ static void gpio_keypad_loop(void *arg)
                 }
                 else if ((flags & FL_FSM) == FL_ADDPROFILE) {
                     // enter PIN, priv, compile (any time)
+                    bool isPinGood;
+                    
+                    // PIN mode: submit PIN
+                    if (flags & FL_PIN) {
+                        isPinGood = (pin_idx < 4) ? false : true;
 
-                    // TEST: comment out the bottom for now
-                    /*if (flags & FL_PIN) {
-                        pinEnter = pin2; // TEST ONLY
-                        addProfile_PIN(&flags, pinEnter, &ret_code);
-                        if (ret_code == 0) {
-                            printf("Enter privilege level...\n");
+                        // Clear PIN display and contents
+                        WS2_msg_clear(&CFAL1602, 1);
+                        for (int i=0; i < 16; i++) {
+                            pinChar[i] = '\0';
+                        }
+                        pin_idx = 0;
+
+                        // case 1: PIN too short
+                        if (!isPinGood) {
+                            // Print 0: Invalid PIN (1 second)
+                            // Print 1: Must be 4 chars (1 second)
+                            WS2_msg_print(&CFAL1602, invalid_pin, 0, false);
+                            WS2_msg_print(&CFAL1602, must_be_4_chars, 1, false);
+                            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                            // NOTE BEGIN: OPTIONAL?
+                            // Print 0: Admin: Add
+                            WS2_msg_print(&CFAL1602, admin_add, 0, false);
+                            // NOTE END
+
+                            // Print 1: PIN (variable). Show PIN prescript
+                            if (pin_idx == 0) {
+                                // Print 1: PIN: (edit pinChar, set pinEnter to +5)
+                                sprintf(pinChar, "%s", "PIN: \0\0\0\0\0\0\0\0\0\0\0");
+                                pinCharTemp = pinChar + 5;
+                                WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                            } else {
+                                ESP_LOGE("me", "bad bad bad");
+                            }
+                            printf("Enter PIN...\n");
+
+                            // return. Still in PIN mode
+                        } 
+                        // case 2: PIN good
+                        else {
+                            // call verifyUser_PIN
+                            addProfile_PIN(&flags, pinEnter, &ret_code);
+
+                            // if retcode == 0
+                            // case 1: PIN already used
+                            if (ret_code != 0x0) {
+                                // NOTE BEGIN: OPTIONAL?
+                                // Print 0: Admin: Add
+                                WS2_msg_print(&CFAL1602, admin_add, 0, false);
+                                // NOTE END
+
+                                // Print 1: PIN (variable). Show PIN prescript
+                                if (pin_idx == 0) {
+                                    // Print 1: PIN: (edit pinChar, set pinEnter to +5)
+                                    sprintf(pinChar, "%s", "PIN: \0\0\0\0\0\0\0\0\0\0\0");
+                                    pinCharTemp = pinChar + 5;
+                                    WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                                } else {
+                                    ESP_LOGE("me", "bad bad bad");
+                                }
+                                printf("Enter PIN...\n");
+
+                                // return. Still in PIN mode
+                            }
+                            // case 2: PIN good for use
+                            else {
+                                // Print 0: PIN good for you (1 second)
+                                WS2_msg_print(&CFAL1602, pin_good_for_use, 0, false);
+                                vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                                // Print 0: Admin Add
+                                WS2_msg_print(&CFAL1602, admin_add, 0, false);
+
+                                // Print 1: Privilege (variable). Show Privilege prescript
+                                if (pin_idx == 0) {
+                                    // Print 1: Privilege: (edit pinChar, set pinEnter to +11)
+                                    sprintf(pinChar, "%s", "Privilege: \0\0\0\0\0");
+                                    pinCharTemp = pinChar + 11;
+                                    WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                                } else {
+                                    ESP_LOGE("me", "bad bad bad");
+                                }
+                                printf("Enter Privilege...\n");
+
+                                // return
+                            }
                         }
                     }
                     else if (flags & FL_PRIVILEGE) {
-                        addProfile_privilege(&flags, privEnter, &ret_code);
-                        printf("PIN and privilege completed.\n");
-                        if ((flags & FL_FP_01) == 0) {
-                            printf("Fingerprint completed. Press ENTER to complete Add Profile\n");
-                        } else {
-                            printf("Awaiting fingerprint...\n");
+                        isPinGood = (pin_idx < 1) ? false : true;
+
+                        // Clear PIN display and contents
+                        WS2_msg_clear(&CFAL1602, 1);
+                        for (int i=0; i < 16; i++) {
+                            pinChar[i] = '\0';
+                        }
+                        pin_idx = 0;
+
+                        // case 1: No privilege added
+                        if (!isPinGood) {
+                            // Print 0: Invalid priv (1 second)
+                            // Print 1: Must be 1 or 2 (1 second)
+                            WS2_msg_print(&CFAL1602, invalid_priv, 0, false);
+                            WS2_msg_print(&CFAL1602, must_be_1_or_2, 1, false);
+                            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                            // Print 0: Admin: Add
+                            WS2_msg_print(&CFAL1602, admin_add, 0, false);
+
+                            // Print 1: Privilege (variable). Show Privilege prescript
+                            if (pin_idx == 0) {
+                                // Print 1: Privilege: (edit pinChar, set pinEnter to +11)
+                                sprintf(pinChar, "%s", "Privilege: \0\0\0\0\0");
+                                pinCharTemp = pinChar + 11;
+                                WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                            } else {
+                                ESP_LOGE("me", "bad bad bad");
+                            }
+                            printf("Enter PIN...\n");
+
+                            // return. Still in Privilege mode
+                        }
+                        // case 2: Privilege good
+                        else {
+                            // call addProfile_privilege()
+                            privEnter = pinEnter[0];
+                            addProfile_privilege(&flags, privEnter, &ret_code);
+                            
+                            // Print 0: Priv accepted (1 second)
+                            WS2_msg_print(&CFAL1602, priv_accepted, 0, false);
+                            printf("PIN and privilege completed.\n");
+                            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                            // Print 0: Admin Add
+                            // Print 1: Awaiting 2 FP
+                            WS2_msg_print(&CFAL1602, admin_add, 0, false);
+                            WS2_msg_print(&CFAL1602, awaiting_2_fp, 1, false);
+                            printf("Awaiting 2 fingerprints...\n");
+
+                            // return. Still in FP mode
                         }
                     }
-                    else if (flags & FL_FP_01) {
-                        printf("No fingerprint loaded. Awaiting fingerprint...\n");
-                    }
-                    else {
+                    else if ((flags & (FL_PIN | FL_PRIVILEGE | FL_FP_01)) == 0) {
+                        // Compile profile
+
+                        // Clear PIN display and contents
+                        WS2_msg_clear(&CFAL1602, 1);
+                        for (int i=0; i < 16; i++) {
+                            pinChar[i] = '\0';
+                        }
+                        pin_idx = 0;
+
+                        // Print 0: Creating profile (unknown duration)
+                        // Print 1: 
+                        WS2_msg_print(&CFAL1602, creating_profile, 0, false);
+                        WS2_msg_clear(&CFAL1602, 1);
                         printf("PIN, privilege, fingerprint completed. Creating profile...\n");
+
+                        // Call addProfile_compile()
                         addProfile_compile(&flags, &ret_code);
 
-                        flags = FL_IDLESTATE | FL_INPUT_READY;
-                    }*/
+                        // Print 0: Returning to (1 second)
+                        // Print 1: menu (1 second)
+                        WS2_msg_print(&CFAL1602, return_to_menu_0, 0, false);
+                        WS2_msg_print(&CFAL1602, return_to_menu_1, 1, false);
+                        printf("Returning to menu...\n");
+                        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                        // reset system to idleState initial state.
+                        restore_to_idleState();
+
+                        // return
+                    }
                 }
                 else if ((flags & FL_FSM) == FL_DELETEPROFILE) {
                     // select profile option from list (only for PROFILE set)
@@ -380,17 +534,9 @@ static void gpio_keypad_loop(void *arg)
                 break;
 
             case ('A') : // special character A : up arrow
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+                if (!my_acquire_lock(true)) {
                     break;
                 }
-                // blocked if help is activated
-                if (isHelp) {
-                    printf("Turn off help before trying again\n");
-                    break;
-                }
-                flags &= ~FL_INPUT_READY;
 
                 if ((flags & FL_FSM) == FL_IDLESTATE) {
                     // toggle next (up) admin control option 0-2 (any time)
@@ -424,17 +570,9 @@ static void gpio_keypad_loop(void *arg)
                 break;
 
             case ('B') : // special character B : down arrow
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+                if (!my_acquire_lock(true)) {
                     break;
                 }
-                // blocked if help is activated
-                if (isHelp) {
-                    printf("Turn off help before trying again\n");
-                    break;
-                }
-                flags &= ~FL_INPUT_READY;
 
                 if ((flags & FL_FSM) == FL_IDLESTATE) {
                     // toggle prev (down) admin control option 0-2 (any time)
@@ -453,12 +591,9 @@ static void gpio_keypad_loop(void *arg)
                 break;
 
             case ('C') : // special character C : help button
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+                if (!my_acquire_lock(false)) {
                     break;
                 }
-                flags &= ~FL_INPUT_READY;
 
                 // toggle help (any time)
 
@@ -488,17 +623,9 @@ static void gpio_keypad_loop(void *arg)
                 break;
             
             case ('D') : // special character D : abort button
-                // attempt to get lock
-                if (!(flags & FL_INPUT_READY)) {
-                    printf("Wait\n");
+                if (!my_acquire_lock(true)) {
                     break;
                 }
-                // blocked if help is activated
-                if (isHelp) {
-                    printf("Turn off help before trying again\n");
-                    break;
-                }
-                flags &= ~FL_INPUT_READY;
 
                 // abort to verifyUser or idleState-admin mode (any time)
 
@@ -568,12 +695,9 @@ static void gpio_task_example(void* arg)
                     if (!is_pressed) {
                         break;
                     }
-                    // attempt to get lock
-                    if (!(flags & FL_INPUT_READY)) {
-                        printf("Wait\n");
+                    if (!my_acquire_lock(false)) {
                         break;
                     }
-                    flags &= ~FL_INPUT_READY;
 
                     if ((flags & FL_FSM) == FL_VERIFYUSER) {
                         // Clear PIN display and contents
@@ -605,17 +729,9 @@ static void gpio_task_example(void* arg)
                     if (is_pressed) {
                         break;
                     }
-                    // attempt to get lock
-                    if (!(flags & FL_INPUT_READY)) {
-                        printf("Wait\n");
+                    if (!my_acquire_lock(true)) {
                         break;
                     }
-                    // blocked if help is activated
-                    if (isHelp) {
-                        printf("Turn off help before trying again\n");
-                        break;
-                    }
-                    flags &= ~FL_INPUT_READY;
 
                     if ((flags & FL_FSM) == FL_VERIFYUSER) {
                         // Clear PIN display and contents
@@ -634,14 +750,71 @@ static void gpio_task_example(void* arg)
                         // return
                     }
                     else if ((flags & FL_FSM) == FL_ADDPROFILE) {
-                        addProfile_fingerprint(&flags, &ret_code);
-                        if (ret_code != 0) {
-                            // release lock
-                            flags |= FL_INPUT_READY;
+                        // Block if PIN and PRIV flags not cleared
+                        if (flags & (FL_PIN | FL_PRIVILEGE)) {
+                            printf("I can sense you!\n");
                             break;
                         }
-                        if ((flags & (FL_PRIVILEGE | FL_PIN | FL_FP_01)) == 0) {
-                            printf("PIN, privilege, fingerprint completed. Press ENTER to complete ADD Profile\n");
+
+                        // Call addProfile_fingerprint()
+                        addProfile_fingerprint(&flags, &ret_code);
+
+                        if (ret_code == 2) { // 2nd fingerprint, bad FP entry
+                            // Print 0: Admin Add
+                            // Print 1: Awaiting 1 FP
+                            WS2_msg_print(&CFAL1602, admin_add, 0, false);
+                            WS2_msg_print(&CFAL1602, awaiting_1_fp, 1, false);
+                            printf("Awaiting 1 fingerprint...\n");
+                        }
+                        else if (ret_code == 1) { // all other fails
+                            // Print 0: Admin Add
+                            // Print 1: Awaiting 2 FP
+                            WS2_msg_print(&CFAL1602, admin_add, 0, false);
+                            WS2_msg_print(&CFAL1602, awaiting_2_fp, 1, false);
+                            printf("Awaiting 2 fingerprints...\n");
+                        }
+                        else { // FP accepted. Done?
+                            // Print 0: FP accepted (1 second)
+                            // Print 1: 
+                            WS2_msg_print(&CFAL1602, fp_accepted, 0, false);
+                            WS2_msg_clear(&CFAL1602, 1);
+                            printf("FP accepted...\n");
+                            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                            // check FP1 flag (set if 1st FP done, cleared if both done)
+                            if (flags & FL_FP_1) {
+                                // Print 0: Admin Add
+                                // Print 1: Awaiting 1 FP
+                                WS2_msg_print(&CFAL1602, admin_add, 0, false);
+                                WS2_msg_print(&CFAL1602, awaiting_1_fp, 1, false);
+                                printf("Awaiting 1 fingerprint...\n");
+                            } else {
+                                // Print 0: Create profile?
+                                WS2_msg_print(&CFAL1602, create_profile, 0, false);
+
+                                // Print 1: PIN 0000  Priv 0 (variable)
+                                if (pin_idx == 0) {
+                                    uint8_t * tPIN;
+                                    uint8_t tPriv;
+                                    tPIN = get_pinBuffer();
+                                    tPriv = get_privBuffer();
+
+                                    // Print 1: Privilege: (edit pinChar, set pinEnter to +11)
+                                    sprintf(pinChar, "%s", "PIN xxxx  Priv x");
+                                    pinCharTemp = pinChar + 4;
+                                    for (int i=0; i<4; i++) {
+                                        pinCharTemp[i] = (char)tPIN[i] + '0';
+                                    }
+                                    pinCharTemp = pinChar + 15;
+                                    pinCharTemp[0] = (char)tPriv + '1';
+
+                                    WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                                } else {
+                                    ESP_LOGE("me", "bad bad bad");
+                                }
+                                // Confirm compile
+                                printf("PIN, privilege, fingerprint completed. Press ENTER to complete ADD Profile\n");
+                            }
                         }
                     }
 
@@ -678,12 +851,6 @@ void app_main(void)
     // NEW: initialize Keypad!
     Keypad_init(&keypad, makeKeymap(keys), rowPins, colPins, ROWS, COLS);
     xTaskCreate(gpio_keypad_loop, "gpio_keypad_loop", 4096, NULL, 12, NULL);
-    // SKIP BOTTOM UNTIL ABOVE WORK SUCCESSFULLY!
-
-
-    // TEST: Wathcog stuff
-    //vTaskDelay();
-    //(unsigned long) (esp_timer_get_time() / 1000ULL)
     
     // 3: Init profile recognition
 
