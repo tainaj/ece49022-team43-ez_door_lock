@@ -1,18 +1,29 @@
+/* WiFi station Example
+
+   This example code is in the Public Domain (or CC0 licensed, at your option.)
+
+   Unless required by applicable law or agreed to in writing, this
+   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+   CONDITIONS OF ANY KIND, either express or implied.
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/event_groups.h"
 #include "esp_system.h"
-#include "esp_spi_flash.h"
-
-#include "driver/gpio.h"
-
 #include "esp_wifi.h"
 #include "esp_event.h"
-#include "freertos/event_groups.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+
+#include "lwip/err.h"
+#include "lwip/sys.h"
+
+#include "esp_spi_flash.h"
+#include "driver/gpio.h"
+
 #include "esp_netif.h"
 #include "esp_netif_types.h"
 
@@ -21,28 +32,7 @@
 #include <lwip/api.h>
 #include <lwip/netdb.h>
 
-#define MY_WIFI_SSID	"TYPE YOUR WIFI"
-#define MY_WIFI_PASS	"TYPE YOUR PASSWORD"
-#define STATIC_IP		"192.168.0.129"
-#define SUBNET_MASK		"255.255.255.0"
-#define GATE_WAY		"192.168.0.1"
-#define DNS_SERVER		"8.8.8.8"
-
-#define ESP_MAXIMUM_RETRY  5
-
-#define ENABLE_STATIC_IP
-
-static const char *TAG = "espressif";	//TAG for debug
-
-static EventGroupHandle_t s_wifi_event_group;
-
-#define WIFI_CONNECTED_BIT BIT0
-#define WIFI_FAIL_BIT      BIT1
-
-static int s_retry_num = 0;
-
-int state = 0;
-int OPEN_PIN = 21;
+#define PIN 2 //Pin will be replaced by switch GPIO PIN
 
 // http header
 const static char http_html_hdr[] =
@@ -50,22 +40,49 @@ const static char http_html_hdr[] =
 
 // 404 header
 const static char http_404_hdr[] =
-"HTTP/1.1 404 Not Found\r\nContent-type: text/html\r\n\r\n";
+        "HTTP/1.1 404 Not Found\r\nContent-type: text/html\r\n\r\n";
 
-// http body
+// http body html code
 const static char http_index_hml[] =
 		"<html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
-		<title>Control</title><style>body{background-color:lightblue;font-size:24px;}</style></head>\
-		<body><h1>Control</h1><a href=\"high\">ON</a><br><a href=\"low\">OFF</a></body></html>";
+		<title>EZ Door Lock</title><style>body{background-color: lightgray;font-size:24px;}</style></head>\
+		<body><h1>EZ Door Lock Control Center</h1><a href=\"high\">OPEN</a><br><a href=\"low\">CLOSE</a></body></html>";
 
-// Has to implement this event_handler for WIFI station connection
+// WIFI ROUTER NAME
+// WIFI PASSWORD
+// CONNECTION TRIAL OF 5
+// STATIC IP OF WEB SERVER
+// SUBNET MASK ADDRESS
+// GATE WAY ADDRESS
+// DNS SERVER (GOOGLE)
+#define EXAMPLE_ESP_WIFI_SSID      "TP-Link_B8F8"
+#define EXAMPLE_ESP_WIFI_PASS      "09687493"
+#define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
+#define STATIC_IP		"192.168.0.129"
+#define SUBNET_MASK		"255.255.255.0"
+#define GATE_WAY		"192.168.0.1"
+#define DNS_SERVER		"8.8.8.8"
+
+/* FreeRTOS event group to signal when we are connected*/
+static EventGroupHandle_t s_wifi_event_group;
+
+/* The event group allows multiple bits for each event, but we only care about two events:
+ * - we are connected to the AP with an IP
+ * - we failed to connect after the maximum amount of retries */
+#define WIFI_CONNECTED_BIT BIT0
+#define WIFI_FAIL_BIT      BIT1
+
+static const char *TAG = "web_server";
+
+static int s_retry_num = 0;
+
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (s_retry_num < ESP_MAXIMUM_RETRY) {
+        if (s_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY) {
             esp_wifi_connect();
             s_retry_num++;
             ESP_LOGI(TAG, "retry to connect to the AP");
@@ -86,21 +103,6 @@ void wifi_init_sta(void)
     s_wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_netif_init());
-
-    esp_netif_dhcpc_stop(0); // Don't run a DHCP client
-
-	//Set static IP
-	esp_netif_ip_info_t ipInfo;
-	inet_pton(AF_INET, STATIC_IP, &ipInfo.ip);
-	inet_pton(AF_INET, GATE_WAY, &ipInfo.gw);
-	inet_pton(AF_INET, SUBNET_MASK, &ipInfo.netmask);
-	esp_netif_set_ip_info(0, &ipInfo);
-
-	//Set Main DNS server
-	esp_netif_dns_info_t dnsInfo;
-	inet_pton(AF_INET, DNS_SERVER, &dnsInfo.ip);
-	esp_netif_set_dns_info(0, ESP_NETIF_DNS_MAIN,
-			&dnsInfo);
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_create_default_wifi_sta();
@@ -123,8 +125,8 @@ void wifi_init_sta(void)
 
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = MY_WIFI_SSID,
-            .password = MY_WIFI_PASS,
+            .ssid = EXAMPLE_ESP_WIFI_SSID,
+            .password = EXAMPLE_ESP_WIFI_PASS,
             /* Setting a password implies station will connect to all security modes including WEP/WPA.
              * However these modes are deprecated and not advisable to be used. Incase your Access point
              * doesn't support WPA2, these mode can be enabled by commenting below line */
@@ -137,9 +139,9 @@ void wifi_init_sta(void)
         },
     };
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start() );
- 
+
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 
     /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
@@ -154,10 +156,10 @@ void wifi_init_sta(void)
      * happened. */
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-                 MY_WIFI_SSID, MY_WIFI_PASS);
+                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
     } else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-                 MY_WIFI_SSID, MY_WIFI_PASS);
+                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
@@ -181,21 +183,9 @@ static void http_server_netconn_serve(struct netconn *conn) {
 	if (err == ERR_OK) {
 		netbuf_data(inbuf, (void**) &buf, &buflen);
 
-		/* Is this an HTTP GET command? (only check the first 5 chars, since
-		 there are other formats for GET, and we're keeping it very simple )*/
+		/* GET COMMAND */
 		if (buflen >= 5 && strncmp("GET ",buf,4)==0) {
 
-			/*  sample:
-			 * 	GET /l HTTP/1.1
-				Accept: text/html, application/xhtml+xml, image/jxr,
-				Referer: http://192.168.1.222/h
-				Accept-Language: en-US,en;q=0.8,zh-Hans-CN;q=0.5,zh-Hans;q=0.3
-				User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36 Edge/14.14393
-				Accept-Encoding: gzip, deflate
-				Host: 192.168.1.222
-				Connection: Keep-Alive
-			 *
-			 */
 			//Parse URL
 			char* path = NULL;
 			char* line_end = strchr(buf, '\n');
@@ -222,10 +212,10 @@ static void http_server_netconn_serve(struct netconn *conn) {
 			{
 
 				if (strcmp("/high",path)==0) {
-					gpio_set_level(OPEN_PIN,1);
+					gpio_set_level(PIN,1);
 				}
 				else if (strcmp("/low",path)==0) {
-					gpio_set_level(OPEN_PIN,0);
+					gpio_set_level(PIN,0);
 				}
 				else if (strcmp("/",path)==0)
 				{
@@ -283,15 +273,24 @@ static void http_server(void *pvParameters) {
 	netconn_delete(conn);
 }
 
-void app_main() {
-	ESP_ERROR_CHECK(nvs_flash_init());
-	wifi_init_sta();
+void app_main(void)
+{
+	//Wifi Station Code
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
 
-	//GPIO initialization
-	gpio_pad_select_gpio(OPEN_PIN);
-	gpio_set_direction(OPEN_PIN, GPIO_MODE_OUTPUT);
+    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+    wifi_init_sta();
+    //Wifi Station Code
 
-	ESP_LOGI(TAG, "Hello world! App is running ... ...\n");
+    //GPIO Controller
+    gpio_pad_select_gpio(PIN);
+    gpio_set_direction(PIN, GPIO_MODE_OUTPUT);
 
-	xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
+    //server creation
+    xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
 }
