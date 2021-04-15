@@ -23,6 +23,12 @@
 #define DOOR_INPUT 22
 
 /**
+ * ------------------------------------------------
+ * Small sized shortcuts (single block on diagrams)
+ * ------------------------------------------------
+ */
+
+/**
  * @brief attempt to acquire lock
  *        - blocked if help is activated
  *        - successful acquire
@@ -30,6 +36,23 @@
  * @return true if lock successfully acquired
  */
 bool my_acquire_lock(bool checkForHelp);
+
+/**
+ * @brief clear print buffer
+ */
+void print_buffer_clear();
+
+/**
+ * @brief preset print buffer to either pin: or privilege:
+ * @param isPinNotPriv true if PIN, false if priv
+ */
+void print_buffer_preset(bool isPinNotPriv);
+
+/**
+ * ------------------------------------------------
+ * Medium sized shortcuts
+ * ------------------------------------------------
+ */
 
 /**
  * @brief reset system to verifyUser initial state.
@@ -59,6 +82,21 @@ void restore_to_idleState();
 void open_door();
 
 /**
+ * @brief toggle next admin control option 0-2. Choose direction
+ *        - determine direction of toggle
+ *        - print hovering menu item
+ * @param increasing true if going 0, 1, 2, 0..., false if going 2, 1, 0, 2...
+ * @return none
+ */
+void idleState_toggle_menu(bool increasing);
+
+/**
+ * ------------------------------------------------
+ * Large sized shortcuts (uses smaller shortcuts)
+ * ------------------------------------------------
+ */
+
+/**
  * @brief handle all 5 verifyUser outcomes
  *        $ outcomes: open door, enter admin, bad_fingerprint, denied, sorry not admin
  *        - case 1: bad fingerprint, denied
@@ -71,14 +109,5 @@ void open_door();
  * @return none
  */
 void verifyUser_outcome_handler();
-
-/**
- * @brief toggle next admin control option 0-2. Choose direction
- *        - determine direction of toggle
- *        - print hovering menu item
- * @param increasing true if going 0, 1, 2, 0..., false if going 2, 1, 0, 2...
- * @return none
- */
-void idleState_toggle_menu(bool increasing);
 
 #endif /* INTEG_THINGS_H_ */

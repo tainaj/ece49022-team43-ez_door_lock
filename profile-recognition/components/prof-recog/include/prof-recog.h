@@ -45,6 +45,7 @@ typedef struct profile_t {
     uint8_t isUsed;
     uint8_t PIN[4];
     uint8_t privilege;
+    int idx;
 } profile_t; // index of array = position
 
 /**
@@ -140,5 +141,30 @@ uint8_t * get_pinBuffer();
  * \retval none
  */
 uint8_t get_privBuffer();
+
+/**
+ * \brief set profile_idx seeker to 0 (factory-fixed)
+ */
+void profile_idx_reset();
+
+/**
+ * \brief from current seeker position, return profile slot
+ * \return 0-199: profile id of full slot. -1: all slots are empty (improbable)
+ */
+profile_t * profile_idx_getCurrProfile();
+
+/**
+ * \brief from current seeker position, find next empty slot
+ * \param direction true if forward, false if backward
+ * \return 0-199: profile id of empty slot. -1: all slots are filled
+ */
+int profile_idx_seekEmptySlot(bool direction);
+
+/**
+ * \brief from current seeker position, find next full slot
+ * \param direction true if forward, false if backward
+ * \return 0-199: profile id of full slot. -1: all slots are empty (improbable)
+ */
+int profile_idx_seekFullSlot(bool direction);
 
 #endif /* PROF_RECOG_H_ */
