@@ -40,7 +40,9 @@ profile_t profiles[MAX_PROFILES] = {
     },                  /// Slots 1-199. Deallocated. Not seen
 };
 
-//extern uint8_t flags;
+
+// useful extern for integ-things
+extern char pinChar[17];
 
 R502_data_len_t starting_data_len;
 static R502_conf_code_t conf_code;
@@ -320,11 +322,19 @@ esp_err_t addProfile_fingerprint(uint8_t *flags, uint8_t *ret_code) {
 
     if (*flags & FL_FP_0) {
         // 1: Wait for fingerprint. When received, wait for 500ms.
+        // Print 0: Scanning... (time)
+        // Print 1: 
+        WS2_msg_print(&CFAL1602, scanning, 0, false);
+        WS2_msg_clear(&CFAL1602, 1);
         printf("Scanning fingerprint 1...\n");
-        //vTaskDelay(20 / portTICK_PERIOD_MS);
         
         if (genImg_Img2Tz(1) != ESP_OK) {
+            // Print 0: Bad fingerprint (1 second)
+            // Print 1: entry (1 second)
+            WS2_msg_print(&CFAL1602, bad_fingerprint_entry_0, 0, false);
+            WS2_msg_print(&CFAL1602, bad_fingerprint_entry_1, 1, false);
             printf("Bad fingerprint entry\n");
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
             return ESP_FAIL;
         }
         
@@ -333,10 +343,21 @@ esp_err_t addProfile_fingerprint(uint8_t *flags, uint8_t *ret_code) {
     }
     else if (*flags & FL_FP_1) {
         // 1: Wait for fingerprint. When received, wait for 500ms.
+        // Print 0: Scanning... (time)
+        // Print 1: 
+        WS2_msg_print(&CFAL1602, scanning, 0, false);
+        WS2_msg_clear(&CFAL1602, 1);
         printf("Scanning fingerprint 2...\n");
 
         if (genImg_Img2Tz(2) != ESP_OK) {
+            // Print 0: Bad fingerprint (1 second)
+            // Print 1: entry (1 second)
+            WS2_msg_print(&CFAL1602, bad_fingerprint_entry_0, 0, false);
+            WS2_msg_print(&CFAL1602, bad_fingerprint_entry_1, 1, false);
             printf("Bad fingerprint entry\n");
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+            *ret_code = 2;
             return ESP_FAIL;
         }
 
@@ -344,7 +365,19 @@ esp_err_t addProfile_fingerprint(uint8_t *flags, uint8_t *ret_code) {
         R502_reg_model(&R502, &conf_code);
         ESP_LOGI("addProfile_fingerprint", "regModel res: %d", (int)conf_code);
         if (conf_code != R502_ok) {
+            // Print 0: Fingerprints (1 second)
+            // Print 1: don't match (1 second)
+            WS2_msg_print(&CFAL1602, fps_dont_match_0, 0, false);
+            WS2_msg_print(&CFAL1602, fps_dont_match_1, 1, false);
             printf("Finger entries do not match. Reenter both\n");
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+            // Print 0: Reenter FPs (0.5 second)
+            // Print 1:
+            WS2_msg_print(&CFAL1602, reenter_fps, 0, false);
+            WS2_msg_clear(&CFAL1602, 1);
+            vTaskDelay(500 / portTICK_PERIOD_MS);
+
             *flags |= FL_FP_01;
             return ESP_FAIL;
         }
@@ -457,16 +490,23 @@ esp_err_t addProfile_compile(uint8_t *flags, uint8_t *ret_code) {
     while (profiles[page_id].isUsed) {
         page_id++;
         if (page_id >= MAX_PROFILES) {
+            // Print 0: Error: ; Delete a profile (2 seconds, block scroll)
+            // Print 1: Slots full ; to free slot
+            WS2_msg_print(&CFAL1602, slots_full_0, 0, false);
+            WS2_msg_print(&CFAL1602, slots_full_1, 0, false);
             printf("Slots full. Delete profile to add space\n");
+
+            // return
             return ESP_FAIL;
         }
     }
     ESP_LOGI("addProfile_compile", "Profile slot to fill: %d", page_id);
 
+    // Use R502_store() to store to scanner
     R502_store(&R502, 1, page_id, &conf_code);
     ESP_LOGI("addProfile_compile", "store res: %d", (int)conf_code);
     if (conf_code != R502_ok) {
-        printf("Failed to store\n");
+        ESP_LOGE("addProfile_compile", "R502 failed to store profile");
         return ESP_FAIL;
     }
 
@@ -494,14 +534,25 @@ esp_err_t addProfile_compile(uint8_t *flags, uint8_t *ret_code) {
 
     esp_err_t err = SD_writeProfile(page_id, pinBuffer, 4, &privBuffer, 1, fingerprintBuffer, R502_TEMPLATE_SIZE);
     if (err != ESP_OK) {
+        ESP_LOGE("addProfile_compile", "Failed to write to SD card");
         return ESP_FAIL;
     }
 
+    // Update ESP32 profile slot
     profiles[page_id].isUsed = 1;
     profiles[page_id].privilege = privBuffer;
     for (int j = 0; j < 4; j++) {
         profiles[page_id].PIN[j] = pinBuffer[j];
     }
+
+    // Print 0: Profile created: (3 seconds)
+    // Print 1: Profile ID: %d (variable) (3 seconds)
+    WS2_msg_print(&CFAL1602, profile_created, 0, false);
+
+    // Print 1: Privilege: (edit pinChar, set pinEnter to +11)
+    sprintf(pinChar, "%s%d", "ID: ", (int)page_id);
+    WS2_msg_print(&CFAL1602, pinChar, 1, false);
+    vTaskDelay(3000 / portTICK_PERIOD_MS);
 
     return ESP_OK;
 }
@@ -529,4 +580,13 @@ esp_err_t deleteProfile_remove(uint8_t *flags, int prof_id, uint8_t *ret_code) {
     }
 
     return ESP_OK;
+}
+
+// other functions
+uint8_t * get_pinBuffer() {
+    return pinBuffer;
+}
+
+uint8_t get_privBuffer() {
+    return privBuffer;
 }

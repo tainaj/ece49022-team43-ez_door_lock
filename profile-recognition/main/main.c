@@ -484,23 +484,37 @@ static void gpio_keypad_loop(void *arg)
                             // return. Still in FP mode
                         }
                     }
-                    else if (flags & FL_FP_01) {
-                        // Print 0
-                        // WAIT
-                    }
+                    else if ((flags & (FL_PIN | FL_PRIVILEGE | FL_FP_01)) == 0) {
+                        // Compile profile
 
+                        // Clear PIN display and contents
+                        WS2_msg_clear(&CFAL1602, 1);
+                        for (int i=0; i < 16; i++) {
+                            pinChar[i] = '\0';
+                        }
+                        pin_idx = 0;
 
-                    // TEST: comment out the bottom for now
-                    /*
-                    else if (flags & FL_FP_01) {
-                        printf("No fingerprint loaded. Awaiting fingerprint...\n");
-                    }
-                    else {
+                        // Print 0: Creating profile (unknown duration)
+                        // Print 1: 
+                        WS2_msg_print(&CFAL1602, creating_profile, 0, false);
+                        WS2_msg_clear(&CFAL1602, 1);
                         printf("PIN, privilege, fingerprint completed. Creating profile...\n");
+
+                        // Call addProfile_compile()
                         addProfile_compile(&flags, &ret_code);
 
-                        flags = FL_IDLESTATE | FL_INPUT_READY;
-                    }*/
+                        // Print 0: Returning to (1 second)
+                        // Print 1: menu (1 second)
+                        WS2_msg_print(&CFAL1602, return_to_menu_0, 0, false);
+                        WS2_msg_print(&CFAL1602, return_to_menu_1, 1, false);
+                        printf("Returning to menu...\n");
+                        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                        // reset system to idleState initial state.
+                        restore_to_idleState();
+
+                        // return
+                    }
                 }
                 else if ((flags & FL_FSM) == FL_DELETEPROFILE) {
                     // select profile option from list (only for PROFILE set)
@@ -736,14 +750,71 @@ static void gpio_task_example(void* arg)
                         // return
                     }
                     else if ((flags & FL_FSM) == FL_ADDPROFILE) {
-                        addProfile_fingerprint(&flags, &ret_code);
-                        if (ret_code != 0) {
-                            // release lock
-                            flags |= FL_INPUT_READY;
+                        // Block if PIN and PRIV flags not cleared
+                        if (flags & (FL_PIN | FL_PRIVILEGE)) {
+                            printf("I can sense you!\n");
                             break;
                         }
-                        if ((flags & (FL_PRIVILEGE | FL_PIN | FL_FP_01)) == 0) {
-                            printf("PIN, privilege, fingerprint completed. Press ENTER to complete ADD Profile\n");
+
+                        // Call addProfile_fingerprint()
+                        addProfile_fingerprint(&flags, &ret_code);
+
+                        if (ret_code == 2) { // 2nd fingerprint, bad FP entry
+                            // Print 0: Admin Add
+                            // Print 1: Awaiting 1 FP
+                            WS2_msg_print(&CFAL1602, admin_add, 0, false);
+                            WS2_msg_print(&CFAL1602, awaiting_1_fp, 1, false);
+                            printf("Awaiting 1 fingerprint...\n");
+                        }
+                        else if (ret_code == 1) { // all other fails
+                            // Print 0: Admin Add
+                            // Print 1: Awaiting 2 FP
+                            WS2_msg_print(&CFAL1602, admin_add, 0, false);
+                            WS2_msg_print(&CFAL1602, awaiting_2_fp, 1, false);
+                            printf("Awaiting 2 fingerprints...\n");
+                        }
+                        else { // FP accepted. Done?
+                            // Print 0: FP accepted (1 second)
+                            // Print 1: 
+                            WS2_msg_print(&CFAL1602, fp_accepted, 0, false);
+                            WS2_msg_clear(&CFAL1602, 1);
+                            printf("FP accepted...\n");
+                            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                            // check FP1 flag (set if 1st FP done, cleared if both done)
+                            if (flags & FL_FP_1) {
+                                // Print 0: Admin Add
+                                // Print 1: Awaiting 1 FP
+                                WS2_msg_print(&CFAL1602, admin_add, 0, false);
+                                WS2_msg_print(&CFAL1602, awaiting_1_fp, 1, false);
+                                printf("Awaiting 1 fingerprint...\n");
+                            } else {
+                                // Print 0: Create profile?
+                                WS2_msg_print(&CFAL1602, create_profile, 0, false);
+
+                                // Print 1: PIN 0000  Priv 0 (variable)
+                                if (pin_idx == 0) {
+                                    uint8_t * tPIN;
+                                    uint8_t tPriv;
+                                    tPIN = get_pinBuffer();
+                                    tPriv = get_privBuffer();
+
+                                    // Print 1: Privilege: (edit pinChar, set pinEnter to +11)
+                                    sprintf(pinChar, "%s", "PIN xxxx  Priv x");
+                                    pinCharTemp = pinChar + 4;
+                                    for (int i=0; i<4; i++) {
+                                        pinCharTemp[i] = (char)tPIN[i] + '0';
+                                    }
+                                    pinCharTemp = pinChar + 15;
+                                    pinCharTemp[0] = (char)tPriv + '1';
+
+                                    WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                                } else {
+                                    ESP_LOGE("me", "bad bad bad");
+                                }
+                                // Confirm compile
+                                printf("PIN, privilege, fingerprint completed. Press ENTER to complete ADD Profile\n");
+                            }
                         }
                     }
 
