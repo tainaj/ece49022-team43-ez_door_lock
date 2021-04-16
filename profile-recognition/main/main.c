@@ -10,7 +10,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
-#include "esp_task_wdt.h"
+//#include "esp_task_wdt.h"
 
 #include "main.h"
 
@@ -953,9 +953,9 @@ void app_main(void)
     flags = FL_VERIFYUSER | FL_PIN | FL_FP_0 | FL_INPUT_READY;
 
     // inf: await the push buttons (in gpio_task_example thread)
-    if (esp_task_wdt_delete(NULL) != ESP_OK) {
-        ESP_LOGW("main", "failure to unsubscribe main loop from task watchdog");
-    }
+    //if (esp_task_wdt_delete(NULL) != ESP_OK) {
+    //    ESP_LOGW("main", "failure to unsubscribe main loop from task watchdog");
+   // }
 
     return;
 }
