@@ -91,6 +91,11 @@ void open_door();
 void idleState_toggle_menu(bool increasing);
 
 /**
+ * @brief help text display handler
+ */
+void help_mode_handler();
+
+/**
  * ------------------------------------------------
  * Large sized shortcuts (uses smaller shortcuts)
  * ------------------------------------------------

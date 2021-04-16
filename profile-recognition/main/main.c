@@ -808,6 +808,7 @@ static void gpio_task_example(void* arg)
                         // Block if PIN and PRIV flags not cleared
                         if (flags & (FL_PIN | FL_PRIVILEGE)) {
                             printf("I can sense you!\n");
+                            flags |= FL_INPUT_READY;
                             break;
                         }
 

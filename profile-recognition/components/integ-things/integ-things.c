@@ -171,6 +171,17 @@ void idleState_toggle_menu(bool increasing) {
     }
 }
 
+void help_mode_handler() {
+    // 1: verifyUser
+    switch (flags & FL_FSM) {
+        case (FL_IDLESTATE) : 
+            //f
+            break;
+        case (FL_VERIFYUSER) :
+    }
+
+}
+
 /**
  * ------------------------------------------------
  * Large sized shortcuts (uses smaller shortcuts)
