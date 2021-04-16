@@ -2,7 +2,7 @@
 
 static const char *TAG = "SD-interface";
 
-void SD_init(void)
+esp_err_t SD_init(void)
 {
 
     esp_err_t ret;
@@ -62,7 +62,7 @@ void SD_init(void)
     ret = spi_bus_initialize(host.slot, &bus_cfg, SPI_DMA_CHAN);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize bus.");
-        return;
+        return ESP_FAIL;
     }
 
     // NEW: Change GPIO2 to pull-up mode
@@ -86,7 +86,7 @@ void SD_init(void)
             ESP_LOGE(TAG, "Failed to initialize the card (%s). "
                 "Make sure SD card lines have pull-up resistors in place.", esp_err_to_name(ret));
         }
-        return;
+        return ESP_FAIL;
     }
 
     // Card has been initialized, print its properties
@@ -102,6 +102,7 @@ void SD_init(void)
     //deinitialize the bus after all devices are removed
     //spi_bus_free(host.slot);
 #endif*/
+    return ESP_OK;
 }
 
 esp_err_t SD_readProfile(int profile_id, uint8_t *pin_p, int pin_n,

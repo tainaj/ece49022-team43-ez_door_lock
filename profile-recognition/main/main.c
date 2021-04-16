@@ -901,22 +901,34 @@ void app_main(void)
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     // 2: create a queue to handle gpio events from isr
-    gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
-    xTaskCreate(gpio_task_example, "gpio_task_example", 4096, NULL, 10, NULL);
+    //gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
+    //xTaskCreate(gpio_task_example, "gpio_task_example", 4096, NULL, 10, NULL);
 
     // NEW: initialize CFAL1602!
     WS2_init(&CFAL1602, CFAL1602_MISO, CFAL1602_MOSI, CFAL1602_CLK, CFAL1602_CS);
 
     // NEW: initialize Keypad!
-    Keypad_init(&keypad, makeKeymap(keys), rowPins, colPins, ROWS, COLS);
-    xTaskCreate(gpio_keypad_loop, "gpio_keypad_loop", 4096, NULL, 12, NULL);
+    //Keypad_init(&keypad, makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+    //xTaskCreate(gpio_keypad_loop, "gpio_keypad_loop", 4096, NULL, 12, NULL);
     
     // 3: Init profile recognition
 
     WS2_msg_print(&CFAL1602, initializing_0, 0, false);
-    profileRecog_init();
+    if (profileRecog_init() != ESP_OK) {
+        printf("error in init\n");
+        WS2_msg_print(&CFAL1602, init_error, 0, false);
+        return;
+    }
     WS2_msg_clear(&CFAL1602, 0);
     WS2_msg_clear(&CFAL1602, 1);
+
+    // 2: create a queue to handle gpio events from isr
+    gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
+    xTaskCreate(gpio_task_example, "gpio_task_example", 4096, NULL, 10, NULL);
+
+    // NEW: initialize Keypad!
+    Keypad_init(&keypad, makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+    xTaskCreate(gpio_keypad_loop, "gpio_keypad_loop", 4096, NULL, 12, NULL);
 
     // 4: Init other subsystems
 

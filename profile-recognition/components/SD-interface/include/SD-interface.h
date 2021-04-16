@@ -70,8 +70,9 @@
 
 /**
  * \brief Initialize SD interface, must call first
+ * \retval See vfy_pass for description of all possible return values
  */
-void SD_init();
+esp_err_t SD_init();
 
 /**
  * \brief Read profile contents from submodule buffer to SD card

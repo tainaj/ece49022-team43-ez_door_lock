@@ -16,13 +16,10 @@
 DRAM_ATTR static const char* initializing_0 =
     "Initializing... ";
 
-// Verify User messages
-/*DRAM_ATTR static const char* enter_pin =
-    "PIN: Press for.."
-    "PIN: #     ENTER"
-    "PIN: * backspace"
-    "PIN: A     admin";*/
+DRAM_ATTR static const char* init_error =
+    "ERROR: Init Fail";
 
+// Verify User messages
 DRAM_ATTR static const char* scanning =
     "Scanning...";
 

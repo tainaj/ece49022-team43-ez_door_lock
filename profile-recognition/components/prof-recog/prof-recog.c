@@ -162,7 +162,9 @@ esp_err_t profileRecog_init() {
     up_char_size = 0;
     ESP_LOGI("profileRecog_init", "starting_data_len: %d", starting_data_len);
 
-    SD_init();
+    if (SD_init() != ESP_OK) {
+        return ESP_FAIL;
+    }
 
     // Clear R503 module (empty)
     R502_empty(&R502, &conf_code);
