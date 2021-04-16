@@ -211,6 +211,42 @@ static void gpio_keypad_loop(void *arg)
                 }
                 else if ((flags & FL_FSM) == FL_DELETEPROFILE) {
                     // reject profile deletion during confirmation (only for PROFILE cleared)
+                    if ((flags &  FL_PROFILEID) == 0) {
+                        // Print 0: Returning to (1 second)
+                        // Print 1: profile Menu...
+                        WS2_msg_print(&CFAL1602, return_to_menu_0, 0, false);
+                        WS2_msg_print(&CFAL1602, return_to_menu_2, 1, false);
+                        printf("returning to profile menu...\n");
+                        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                        // revert to profile ID menu
+                        printf("Starting Delete Profile...\n");
+                        // case 2: deleteProfile
+                        profile_t * prof_ptr;
+                        // get profile of slot 0
+                        profile_idx_reset();
+                        prof_ptr = profile_idx_getCurrProfile();
+
+                        // Print 0: Admin: Delete
+                        WS2_msg_print(&CFAL1602, admin_delete, 0, false);
+
+                        // preset print buffer to profile0
+                        // Print 1: P: %3d      [admin]
+                        if (prof_ptr->privilege == 1) {
+                            sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "     admin");
+                        } else {
+                            sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "      user");
+                        }
+                        WS2_msg_print(&CFAL1602, pinChar, 1, false);
+
+                        // set flags to deleteProfile_init
+                        flags = FL_DELETEPROFILE | FL_PROFILEID;
+
+                        // set accessAdmin to 0
+                        accessAdmin = 0;
+
+
+                    }
                 }
                 // release lock
                 flags |= FL_INPUT_READY;
@@ -261,7 +297,7 @@ static void gpio_keypad_loop(void *arg)
                         if (prof_ptr->privilege == 1) {
                             sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "     admin");
                         } else {
-                            sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "          ");
+                            sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "      user");
                         }
                         WS2_msg_print(&CFAL1602, pinChar, 1, false);
 
@@ -461,30 +497,68 @@ static void gpio_keypad_loop(void *arg)
                 else if ((flags & FL_FSM) == FL_DELETEPROFILE) {
                     // select profile option from list (only for PROFILE set)
                     // accept profile deletion during confirmation (only for PROFILE cleared)
-                    if (flags | FL_PROFILEID) {
+                    if (flags & FL_PROFILEID) {
                         // enter currentProfile to profileIdEnter
                         profile_t * prof_ptr;
                         prof_ptr = profile_idx_getCurrProfile();
                         profileIdEnter = prof_ptr->idx;
 
-                        // clear PROFILE flag
-                        flags &= ~FL_PROFILEID;
+                        // you cannot delete profile0
+                        if (profileIdEnter == 0) {
+                            // Print 0: P0 cannot be (1 second)
+                            // Print 1: deleted
+                            WS2_msg_print(&CFAL1602, p0_cannot_be_deleted_0, 0, false);
+                            WS2_msg_print(&CFAL1602, p0_cannot_be_deleted_1, 1, false);
+                            printf("Profile 0 cannot bne deleted\n");
+                            vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-                        // Print 0: Are you sure?
-                        WS2_msg_print(&CFAL1602, are_you_sure, 0, false);
+                            // Print 0: Admin: Delete
+                            WS2_msg_print(&CFAL1602, admin_delete, 0, false);
+
+                            // preset print buffer to profile0
+                            // Print 1: P: %3d      [admin]
+                            if (prof_ptr->privilege == 1) {
+                                sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "     admin");
+                            } else {
+                                sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "      user");
+                            }
+                            WS2_msg_print(&CFAL1602, pinChar, 1, false);
+                        }
+                        else {
+                            // clear PROFILE flag
+                            flags &= ~FL_PROFILEID;
+
+                            // Print 0: Are you sure?
+                            WS2_msg_print(&CFAL1602, are_you_sure, 0, false);
+                            printf("are your sure?\n");
+                        }
                     }
                     else {
-                        //f
-                    }
+                        // clear PIN display and contents
+                        print_buffer_clear();
 
-                    // TEST: comment out bottom for now. Wait for implementation of list select.
-                    /*if (flags & FL_PROFILEID) {
-                        //profileEnter = 
+                        // Print 0: Deleting profile (1 second)
+                        // Print 1: 
+                        WS2_msg_print(&CFAL1602, deleting_profile, 0, false);
+                        WS2_msg_clear(&CFAL1602, 1);
+                        printf("deleting profile\n");
+                        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                        // call deleteProfile_remove
                         deleteProfile_remove(&flags, profileIdEnter, &ret_code);
-                        if (ret_code == 0) {
-                            printf("profile deleted!\n");
-                        }
-                    }*/
+
+                        // Print 0: Returning to (1 second)
+                        // Print 1: menu (1 second)
+                        WS2_msg_print(&CFAL1602, return_to_menu_0, 0, false);
+                        WS2_msg_print(&CFAL1602, return_to_menu_1, 1, false);
+                        printf("Returning to menu...\n");
+                        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                        // reset system to idleState initial state.
+                        restore_to_idleState();
+
+                        // return
+                    }
                 }
                 // release lock
                 flags |= FL_INPUT_READY;
@@ -535,7 +609,7 @@ static void gpio_keypad_loop(void *arg)
                         if (prof_ptr->privilege == 1) {
                             sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "     admin");
                         } else {
-                            sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "          ");
+                            sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "      user");
                         }
                         WS2_msg_print(&CFAL1602, pinChar, 1, false);
                     }
@@ -574,7 +648,7 @@ static void gpio_keypad_loop(void *arg)
                         if (prof_ptr->privilege == 1) {
                             sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "     admin");
                         } else {
-                            sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "          ");
+                            sprintf(pinChar, "%s%3d%s", "P: ", prof_ptr->idx, "      user");
                         }
                         WS2_msg_print(&CFAL1602, pinChar, 1, false);
                     }
