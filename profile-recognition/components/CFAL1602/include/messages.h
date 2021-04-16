@@ -55,18 +55,59 @@ DRAM_ATTR static const char* canceled =
     "Canceled";
 
 // NEW: help thing
-DRAM_ATTR static const char* help1 =
-    "The purpose is to experience test, "
-    "in the face of certain test, "
-    "to accept that test, "
-    "to maintain control of oneself in one's test."
-    "It is a subroutine expected of every Starfleet captain.    -Spock, [YTP] Spock is Emotionally Compromised";
+DRAM_ATTR static const char* help_0_idlestate =
+    "Admin menu HELP";
+DRAM_ATTR static const char* help_1_idlestate =
+    "                There are 3 options: Add Profile, Delete Profile, Exit Admin. "
+    "To toggle menu options, press A or B. "
+    "To select option, press #.                ";
 
-DRAM_ATTR static const char* help2 =
-    "I have a new hearing aid Emperor. "
-    "Or should I call you, Darth Idiot? "
-    "Or should I call you, Darth Arthur? "
-    "Or should I call you, Darth Darthius? ";
+DRAM_ATTR static const char* help_0_verifyuser =
+    "Verify User HELP";
+DRAM_ATTR static const char* help_1_verifyuser =
+    "                Open the door, or access admin menu (admin privilege only). "
+    "Press finger on scanner, or enter 4-digit PIN with #. "
+    "Press * to backspace. "
+    "Press A to toggle admin verify. "
+    "Press C to exit help mode. "
+    "Press D to return to initial state.                ";
+
+DRAM_ATTR static const char* help_0_addprofile =
+    "Add Profile HELP";
+DRAM_ATTR static const char* help_1_addprofile_pin =
+    "                Enter 4-digit PIN, then press # to confirm. "
+    "If PIN is already used by another profile, enter different PIN. "
+    "Press * to backspace. "
+    "Press C to exit help mode. "
+    "Press D to abort Add Profile.                ";
+DRAM_ATTR static const char* help_1_addprofile_priv =
+    "                Enter 1 for user, or 2 for admin, then press # to confirm. "
+    "Press * to backspace. "
+    "Press C to exit help mode. "
+    "Press D to abort Add Profile.                ";
+DRAM_ATTR static const char* help_1_addprofile_fp =
+    "                Enter finger two times to register prints. "
+    "If fingers do not match, repeat the procedure. "
+    "Press C to exit help mode. "
+    "Press D to abort Add Profile.                ";
+DRAM_ATTR static const char* help_1_addprofile_compile =
+    "                Confirmation step. Press # to complete Add Profile. "
+    "Press C to exit help mode. "
+    "Press D to abort Add Profile.                ";
+
+DRAM_ATTR static const char* help_0_delprofile =
+    "Del Profile HELP";
+DRAM_ATTR static const char* help_1_delprofile_menu =
+    "                Select an existing profile to delete. "
+    "To toggle menu options, press A or B. "
+    "To select option, press #. "
+    "Press C to exit help mode. "
+    "Press D to abort Delete Profile.                ";
+DRAM_ATTR static const char* help_1_delprofile_confirm =
+    "                Confirmation step. Press # to complete Delete Profile. "
+    "Press * to return to profile menu. "
+    "Press C to exit help mode. "
+    "Press D to abort Delete Profile.                ";
 
 // Idle State messages
 DRAM_ATTR static const char* admin_menu =

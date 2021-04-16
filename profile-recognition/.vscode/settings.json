@@ -19,7 +19,7 @@
     "esp_spi_flash.h": "c",
     "spi_master.h": "c"
   },
-  "idf.portWin": "COM4",
+  "idf.portWin": "COM8",
   "idf.flashType": "UART",
   "cmake.configureOnOpen": false
 }

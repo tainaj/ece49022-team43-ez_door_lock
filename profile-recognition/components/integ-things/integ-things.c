@@ -31,30 +31,12 @@ extern int pin_idx;
 extern uint8_t ret_code;
 extern uint8_t privilege;
 
+char * help1;
+char * help2;
+
 
 
 // private functions
-/*static esp_err_t genImg_Img2Tz(uint8_t buffer_id) {
-
-    // 1: Wait for fingerprint. When received, wait for 500ms.
-    vTaskDelay(20 / portTICK_PERIOD_MS);
-                    
-    // 2: Action. GenImg(). Abort if fail
-    R502_gen_image(&R502, &conf_code);
-    ESP_LOGI("genImg_Img2Tz", "genImg res: %d", (int)conf_code);
-    if (conf_code != R502_ok) {
-        return ESP_FAIL;
-    } 
-
-    // 3: Action: Img2Tz(). Abort if fail
-    R502_img_2_tz(&R502, buffer_id, &conf_code);
-    ESP_LOGI("genImg_Img2Tz", "Img2Tz res: %d", (int)conf_code);
-    if (conf_code != R502_ok) {
-        return ESP_FAIL;
-    }
-
-    return ESP_OK;
-}*/
 
 // public functions
 
@@ -175,10 +157,40 @@ void help_mode_handler() {
     // 1: verifyUser
     switch (flags & FL_FSM) {
         case (FL_IDLESTATE) : 
-            //f
+            help1 = help_0_idlestate;
+            help2 = help_1_idlestate;
             break;
         case (FL_VERIFYUSER) :
+            help1 = help_0_verifyuser;
+            help2 = help_1_verifyuser;
+            break;
+        case (FL_ADDPROFILE) :
+            help1 = help_0_addprofile;
+            if (flags & FL_PIN) {
+                help2 = help_1_addprofile_pin;
+            }
+            else if (flags & FL_PRIVILEGE) {
+                help2 = help_1_addprofile_priv;
+            }
+            else if (flags & FL_FP_01) {
+                help2 = help_1_addprofile_fp;
+            }
+            else {
+                help2 = help_1_addprofile_compile;
+            }
+            break;
+        case (FL_DELETEPROFILE) :
+            help1 = help_0_delprofile;
+            if (flags & FL_PROFILEID) {
+                help2 = help_1_delprofile_menu;
+            }
+            else {
+                help2 = help_1_delprofile_confirm;
+            }
+            break;
     }
+    WS2_msg_print(&CFAL1602, help1, 0, false);
+    WS2_msg_print(&CFAL1602, help2, 1, true);
 
 }
 

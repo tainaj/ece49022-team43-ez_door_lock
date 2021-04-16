@@ -88,7 +88,7 @@ CFAL1602Interface CFAL1602 = {
     .initialized = false,
     .line_len = 16,
     .line_count = 2,
-    .timer_period = 500000
+    .timer_period = 250000
 };
 
 // gpio event queue: all interrupts lead here
@@ -675,8 +675,11 @@ static void gpio_keypad_loop(void *arg)
                     help_save2 = WS2_get_string(&CFAL1602, 1);
 
                     // print help strings (TEST: currently junk help)
-                    WS2_msg_print(&CFAL1602, help1, 0, true);
-                    WS2_msg_print(&CFAL1602, help2, 1, true);
+
+                    help_mode_handler();
+
+                    /*WS2_msg_print(&CFAL1602, help1, 0, true);
+                    WS2_msg_print(&CFAL1602, help2, 1, true);*/
                 // case 2: leave help
                 } else {
                     // toggle help
