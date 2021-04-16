@@ -1,0 +1,6 @@
+source "C:/Users/Joel/esp/esp-idf/components/app_update/Kconfig.projbuild"
+source "C:/Users/Joel/esp/esp-idf/components/bootloader/Kconfig.projbuild"
+source "C:/Users/Joel/esp/esp-idf/components/esptool_py/Kconfig.projbuild"
+source "C:/Users/Joel/esp/esp-idf/components/partition_table/Kconfig.projbuild"
+source "C:/Users/Joel/joel_m_taina/_archive/_programming/_workspace/ece49022-team43-ez_door_lock/web-server/main/main/Kconfig.projbuild"
+source "C:/Users/Joel/joel_m_taina/_archive/_programming/_workspace/ece49022-team43-ez_door_lock/web-server/main/webserver/Kconfig.projbuild"
