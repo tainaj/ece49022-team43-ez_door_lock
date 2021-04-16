@@ -186,8 +186,7 @@ void app_main(void)
     esp_http_client_fetch_headers(client);
     char data_buff[5];
     int len = esp_http_client_read(client, data_buff, 5);
-
-    printf(strcmp(data_buff, "\"ON\""));
+    ESP_LOGI(TAG, "Client databuff");
     if(strcmp(data_buff, "\"ON\"") == 0){
     	printf("ON");
     	gpio_pad_select_gpio(GPIO_NUM_21);
