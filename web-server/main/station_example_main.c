@@ -30,7 +30,7 @@
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
 */
-#define EXAMPLE_ESP_WIFI_SSID      "boh3900's iPhone"
+#define EXAMPLE_ESP_WIFI_SSID      "boh39"
 #define EXAMPLE_ESP_WIFI_PASS      "pass12345"
 #define EXAMPLE_ESP_MAXIMUM_RETRY  100
 
@@ -164,19 +164,18 @@ void app_main(void)
         };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
-    printf("1\n");
+    //printf("1\n");
     esp_err_t err;
 
 
 
-    while(1){
     err = esp_http_client_perform(client);
-    printf("2\n");
+    //printf("2\n");
     if(err == ESP_OK){
     	ESP_LOGI(TAG,"Connected to Server %d\n", err);
         }
 
-    printf("3\n");
+    //printf("3\n");
 
     if (err == ESP_OK) {
        ESP_LOGI(TAG, "Status = %d, content_length = %d",
@@ -184,22 +183,22 @@ void app_main(void)
                esp_http_client_get_content_length(client));
     }
 
-    printf("4\n");
     esp_http_client_fetch_headers(client);
-    char data_buff[100];
-    int len = esp_http_client_read(client, data_buff, 100);
-    printf("THE READ length IS %d\n", len);
-    printf("%s", data_buff);
-    if(strcmp(data_buff, "ON") == 1){
+    char data_buff[5];
+    int len = esp_http_client_read(client, data_buff, 5);
+
+    printf(strcmp(data_buff, "\"ON\""));
+    if(strcmp(data_buff, "\"ON\"") == 0){
+    	printf("ON");
     	gpio_pad_select_gpio(GPIO_NUM_21);
     	gpio_set_direction(GPIO_NUM_21, GPIO_MODE_OUTPUT);
     	gpio_set_level(GPIO_NUM_21, 1);
     }
     else{
+    	printf("OFF");
     	gpio_pad_select_gpio(GPIO_NUM_21);
     	gpio_set_direction(GPIO_NUM_21, GPIO_MODE_OUTPUT);
     	gpio_set_level(GPIO_NUM_21, 0);
-    }
     }
     esp_http_client_close(client);
 
