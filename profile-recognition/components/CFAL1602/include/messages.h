@@ -148,4 +148,22 @@ DRAM_ATTR static const char* admin_delete =
 DRAM_ATTR static const char* leaving_admin =
     "Leaving Admin...";
 
+DRAM_ATTR static const char* are_you_sure =
+    "Are you sure?";
+
+DRAM_ATTR static const char* return_to_menu_2 =
+    "profile menu...";
+
+DRAM_ATTR static const char* deleting_profile =
+    "Deleting profile";
+
+DRAM_ATTR static const char* profile_deleted =
+    "Profile deleted";
+
+DRAM_ATTR static const char* p0_cannot_be_deleted_0 =
+    "Profile 0 cannot";
+
+DRAM_ATTR static const char* p0_cannot_be_deleted_1 =
+    "be deleted";
+
 #endif /* MESSAGES_H */

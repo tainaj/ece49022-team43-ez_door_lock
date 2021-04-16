@@ -53,7 +53,7 @@ static uint16_t page_id;
 static uint16_t match_score;
 static int up_char_size = 0;
 
-static int numProfilesFull = 0;
+static int numProfilesFull = 1;
 
 // The object under test
 R502Interface R502 = {
@@ -571,12 +571,12 @@ esp_err_t addProfile_compile(uint8_t *flags, uint8_t *ret_code) {
 esp_err_t deleteProfile_remove(uint8_t *flags, int prof_id, uint8_t *ret_code) {
     *ret_code = 1;
 
-    if (*flags & (FL_PROFILEID)) {
+    if ((*flags & FL_PROFILEID) == 0) {
         // 1: delete fingerprint template in R503
         R502_delet_char(&R502, prof_id, 1, &conf_code);
         ESP_LOGI("deleteProfile_remove", "DeletChar res: %d", (int)conf_code);
         if (conf_code != R502_ok) {
-            printf("Failed to delete fingerprint from R503\n");
+            ESP_LOGE("deleteProfile_remove", "Failed to delete fingerprint from R503\n");
             return ESP_FAIL;
         }
         // 2: delete profile entry in SD card
@@ -587,9 +587,15 @@ esp_err_t deleteProfile_remove(uint8_t *flags, int prof_id, uint8_t *ret_code) {
         numProfilesFull--;
         ESP_LOGI("profileRecog_init", "Number of profiles registered: %d", numProfilesFull);
 
+        // Print 0: Profile deleted (2 seconds)
+        // Print 1: 
+        WS2_msg_print(&CFAL1602, profile_deleted, 0, false);
+        WS2_msg_clear(&CFAL1602, 1);
+        printf("Profile deleted\n");
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+
         // 4: reset 
         *ret_code = 0;
-        *flags = FL_IDLESTATE | FL_INPUT_READY;
     }
 
     return ESP_OK;
