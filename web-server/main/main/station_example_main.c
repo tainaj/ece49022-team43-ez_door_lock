@@ -30,8 +30,8 @@
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
 */
-#define EXAMPLE_ESP_WIFI_SSID      "ZyXEL7A38A0"
-#define EXAMPLE_ESP_WIFI_PASS      "JAW94H3JVA7KJ"
+#define EXAMPLE_ESP_WIFI_SSID      "boh39"
+#define EXAMPLE_ESP_WIFI_PASS      "pass12345"
 #define EXAMPLE_ESP_MAXIMUM_RETRY  100
 
 /* FreeRTOS event group to signal when we are connected*/
@@ -160,19 +160,22 @@ void app_main(void)
     //code here
 
     esp_http_client_config_t config = {
-            .url = "https://ece-49022-door-default-rtdb.firebaseio.com/LED.json?LY1GPq26rP6ditM2jetevoGLjQpnYAwUcwfRnYSz",
+            .url = "https://ece-49022-door-default-rtdb.firebaseio.com/LOCK.json?LY1GPq26rP6ditM2jetevoGLjQpnYAwUcwfRnYSz",
         };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
-    printf("1\n");
+    //printf("1\n");
     esp_err_t err;
+
+
+
     err = esp_http_client_perform(client);
-    printf("2\n");
+    //printf("2\n");
     if(err == ESP_OK){
     	ESP_LOGI(TAG,"Connected to Server %d\n", err);
         }
 
-    printf("3\n");
+    //printf("3\n");
 
     if (err == ESP_OK) {
        ESP_LOGI(TAG, "Status = %d, content_length = %d",
@@ -180,18 +183,24 @@ void app_main(void)
                esp_http_client_get_content_length(client));
     }
 
-    printf("4\n");
     esp_http_client_fetch_headers(client);
-    char data_buff[100]; //Data retrieving from the web
-    int read = esp_http_client_read(client, data_buff, 100); //Actual Length of the data is only 5 bytes
-    printf("THE READ IS %s\n", data_buff); //"THE READ IS ON" or "THE READ IS OFF"
+    char data_buff[5];
+    int len = esp_http_client_read(client, data_buff, 5);
 
-
+    printf(strcmp(data_buff, "\"ON\""));
+    if(strcmp(data_buff, "\"ON\"") == 0){
+    	printf("ON");
+    	gpio_pad_select_gpio(GPIO_NUM_21);
+    	gpio_set_direction(GPIO_NUM_21, GPIO_MODE_OUTPUT);
+    	gpio_set_level(GPIO_NUM_21, 1);
+    }
+    else{
+    	printf("OFF");
+    	gpio_pad_select_gpio(GPIO_NUM_21);
+    	gpio_set_direction(GPIO_NUM_21, GPIO_MODE_OUTPUT);
+    	gpio_set_level(GPIO_NUM_21, 0);
+    }
     esp_http_client_close(client);
-    //TESTING
-    ESP_LOGI(TAG, "GPIO 17 IS ON");
-    gpio_pad_select_gpio(GPIO_NUM_17);
-    gpio_set_direction(GPIO_NUM_17, GPIO_MODE_OUTPUT);
-    gpio_set_level(17, 1);
+
 
 }
